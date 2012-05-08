@@ -1,0 +1,14 @@
+{
+"name":"dnslyser",
+"description":"Node-js DNS traffic analyzer.",
+"version":"0.1.1",
+"keywords":["dns", "passive", "passive dns", "malware"],
+"dependencies":{
+//    "node-solr": "https://github.com/gsf/node-solr.git",
+  "memcache": "",
+  "ejs":"",
+  "express":"",
+  "iconv":"",
+  "glob-trie.js":""
+}
+}
