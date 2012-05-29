@@ -55,6 +55,18 @@
   <!-- general -->
   <field name="id"      type="string"   indexed="true"  stored="true"  multiValued="false" required="true"/>
    <field name="date" type="tlong"  indexed="true" stored="true" />
+   <field name="qr" type="int"  indexed="true" stored="true" />
+   <field name="type" type="int"  indexed="true" stored="true" />
+   <field name="opcode" type="int"  indexed="true" stored="true" />
+   <field name="aa" type="int"  indexed="true" stored="true" />
+   <field name="tc" type="int"  indexed="true" stored="true" />
+   <field name="rd" type="int"  indexed="true" stored="true" />
+   <field name="ra" type="int"  indexed="true" stored="true" />
+   <field name="rcode" type="int"  indexed="true" stored="true" />
+   <field name="qdcount" type="int"  indexed="true" stored="true" />
+   <field name="ancount" type="int"  indexed="true" stored="true" />
+   <field name="nscount" type="int"  indexed="true" stored="true" />
+   <field name="arcount" type="int"  indexed="true" stored="true" />
   <field name="host"    type="string"   indexed="true"  stored="true"  multiValued="false" /> 
   <field name="ip"    type="string"   indexed="true"  stored="true"  multiValued="false" /> 
   <field name="origin"   type="string"   indexed="true"  stored="true"  multiValued="false" /> 
@@ -68,7 +80,8 @@
    <field name="raw" type="binary"  indexed="true" stored="true" />
    <field name="rawstring" type="string"  indexed="true" stored="true" />
    <field name="nameserver" type="string"  indexed="true" stored="true" multiValued="true"/>
-   <field name="query" type="string"  indexed="true" stored="true" />
+   <field name="query" type="string"  indexed="true" stored="true" multiValued="true"/>
+   <field name="response" type="string"  indexed="true" stored="true" multiValued="true"/>
    <field name="failed" type="boolean"  indexed="true" stored="true" />
  </fields>
 
