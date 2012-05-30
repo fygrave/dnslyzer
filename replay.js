@@ -7,7 +7,7 @@ var client = dgram.createSocket('udp4');
 
 
 // Walker options
-var walker  = walk.walk('/home/fygrave/devel/ph/tmp/packs', { followLinks: false });
+var walker  = walk.walk('/home/fygrave/devel/ph/packs3', { followLinks: false });
 
 walker.on('file', function(root, stat, next) {
     // Add this file to the list of files

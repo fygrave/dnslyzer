@@ -49,6 +49,7 @@ sock.on('message', function(rawMessage, rinfo) {
     //parse question
     packet.query = Array();
     packet.response = Array();
+    packet.response_ttl = Array();
     var offset = 24; // starting offset for DNS packet body
     for (var i = 0; i< packet.qdcount; i++) {
 	
@@ -63,6 +64,7 @@ sock.on('message', function(rawMessage, rinfo) {
     //console.log("answer len: " + rawMessage[offset].toString(16));
     for (var i=0; i< packet.ancount; i++) {
 	if (rawMessage[offset] == 0xc0) { // name is pointer skip
+            var ttl = rawMessage[offset+7] * 16777216  + rawMessage[offset+ 8 ] * 65536+ rawMessage[offset + 9] * 256 + rawMessage[offset + 10];
 	    offset = offset + 10; // skip pointer (2), answer type (2), answer class(2) and ttl (4)
 
     //console.log(packet.id.toString(16) + " : " + packet.type.toString(16));
@@ -72,6 +74,7 @@ sock.on('message', function(rawMessage, rinfo) {
 	//console.log("rdlen: " + rdlen);
 	var rdata = rawMessage[offset + 5] + "." + rawMessage[offset + 4] + "." + rawMessage[offset + 3] + "." + rawMessage[offset + 2];
 	    packet.response.push(rdata);
+            packet.response_ttl.push(ttl);
 	console.log("rdata: " + rdata);
 	offset = offset + rdlen;
 	}

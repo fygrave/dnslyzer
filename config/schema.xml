@@ -82,6 +82,7 @@
    <field name="nameserver" type="string"  indexed="true" stored="true" multiValued="true"/>
    <field name="query" type="string"  indexed="true" stored="true" multiValued="true"/>
    <field name="response" type="string"  indexed="true" stored="true" multiValued="true"/>
+   <field name="response_ttl" type="int"  indexed="true" stored="true" multiValued="true"/>
    <field name="failed" type="boolean"  indexed="true" stored="true" />
  </fields>
 
