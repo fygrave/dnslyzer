@@ -51,7 +51,7 @@ amqpcon.on('ready', setup);
 
 function save_to_redis(packet) {
     for (var i = 0; i < packet.query.length; i++) {
-        redisc.hmset(packet.query[i] + packet.rcode, {"query":JSON.stringify(packet) }, function(err, msg) {
+        redisc.hmset(packet.query[i] +  ":" + packet.rcode, {"query":JSON.stringify(packet) }, function(err, msg) {
             if (err) {
                 console.log("redis error: " + err);
                 console.log(packet);
@@ -59,7 +59,7 @@ function save_to_redis(packet) {
         });
     }
     for (var j =0; j < packet.response.length; j++) {
-        redisc.hmset(packet.response[j] + packet.rcode,  {"query":JSON.stringify(packet) }, function(err, msg) {
+        redisc.hmset(packet.response[j] + ":" + packet.rcode,  {"query":JSON.stringify(packet) }, function(err, msg) {
             if (err) {
                 console.log("redis error: " + err);
                 console.log(packet);
