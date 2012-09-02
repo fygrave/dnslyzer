@@ -1,17 +1,24 @@
 var dgram = require('dgram');
-var solr = require('node-solr');
+var solr = require('solr');
+var amqp_config = require("./config/amqp_config.js");
+var amqp = require("amqp");
 //var memcache = require('memcache');
 //var uuid = require('simple-uuid');
 var crypto = require('crypto');
+var redis = require('redis');
 
+
+//var redisc = redis.createClient(null, '172.16.185.8', 6379);
+var redisc = redis.createClient(6381, '172.16.185.9');
 
 
 var client = solr.createClient(
-{ host: 'localhost',
+{ host: '172.16.185.9',
   port: 8983,
-//  core: '/core01'
+  core: '/dns'
 });
 
+setInterval(function() { client.commit();  }, 1000);
 
 //var mcache = new memcache.Client(11211, 'localhost');
 //mcache.port = 11211;
@@ -22,10 +29,29 @@ var client = solr.createClient(
 
 
 
-
 sock = dgram.createSocket('udp4');
 
-sock.on('message', function(rawMessage, rinfo) {
+function setup() {
+    var exchange = amqpcon.exchange(amqp_config.exchange, {type: 'fanout', durable: false});
+    var queue = amqpcon.queue(amqp_config.work_queue, {durable:false, exclusive: false}, function() {
+        console.log("queue");
+        queue.bind(exchange, "#");
+    });
+    console.log("Done");
+    sock.on('message', function(rawMessage, rinfo) {
+        var pack = parseDNS(rawMessage, rinfo);
+        exchange.publish("dns",{packet: pack});
+    });
+
+}
+
+
+console.log("DNS capture. Logging to AMQP: " + amqp_config.url);
+var amqpcon = amqp.createConnection({url: amqp_config.url});
+amqpcon.on('ready', setup);
+
+
+function parseDNS(rawMessage, rinfo) {
     if (rawMessage[2] == 81 && rawMessage[3] == 83) {
 	console.log("response -> no name found");
     }
@@ -40,14 +66,15 @@ sock.on('message', function(rawMessage, rinfo) {
     packet.rd = (packet.type & 0x200) >> 9;
     packet.ra = (packet.type & 0x100) >> 8;
     packet.rcode = (packet.type & 0x7);
-    console.log("qr:" + packet.qr + " opcode:" + packet.opcode + " aa:" + packet.aa + " rcode: " + packet.rcode);
+    //console.log("qr:" + packet.qr + " opcode:" + packet.opcode + " aa:" + packet.aa + " rcode: " + packet.rcode);
     packet.qdcount = rawMessage[16] * 256 + rawMessage[17];
     packet.ancount = rawMessage[18] * 256 + rawMessage[19];
     packet.nscount = rawMessage[20]*256 + rawMessage[21];
     packet.arcount = rawMessage[22] * 256 + rawMessage[23];
-    console.log("q:" + packet.qdcount + " an:" + packet.ancount + " ns:" + packet.nscount + " ar:" + packet.arcount);
+    //console.log("q:" + packet.qdcount + " an:" + packet.ancount + " ns:" + packet.nscount + " ar:" + packet.arcount);
     //parse question
     packet.query = Array();
+    packet.dom = Array();
     packet.response = Array();
     packet.response_ttl = Array();
     var offset = 24; // starting offset for DNS packet body
@@ -58,7 +85,8 @@ sock.on('message', function(rawMessage, rinfo) {
 	s = rez[0];
 	offset = rez[1] + 4; // 4 octets QTYPE and QCLASS
 	packet.query.push(s);
-	console.log("s: " + s + " all: " + getAllChars(rawMessage));
+	packet.dom.push(s);
+	//console.log("s: " + s + " all: " + getAllChars(rawMessage));
     }
     offset = offset + 1; // trailing 0
     //console.log("answer len: " + rawMessage[offset].toString(16));
@@ -75,7 +103,7 @@ sock.on('message', function(rawMessage, rinfo) {
 	var rdata = rawMessage[offset + 5] + "." + rawMessage[offset + 4] + "." + rawMessage[offset + 3] + "." + rawMessage[offset + 2];
 	    packet.response.push(rdata);
             packet.response_ttl.push(ttl);
-	console.log("rdata: " + rdata);
+	//console.log("rdata: " + rdata);
 	offset = offset + rdlen;
 	}
     }
@@ -86,19 +114,10 @@ sock.on('message', function(rawMessage, rinfo) {
     hash.update(new Date().toString());
 
     
-    packet.id = hash.digest("hex"),
+    packet.id = hash.digest("hex");
 
-    console.log(JSON.stringify(packet));
-    client.add(packet, function(err) {
-	if (err) {
-	    console.log(err);
-	}
-    });
-    client.commit();
-    
-    / *console.log(JSON.stringify(rawMessage)); */
-
-});
+    return packet;
+}
 
 sock.on('listening', function() {
     var address = sock.address();
