@@ -94,7 +94,28 @@ function save_to_solr(packet) {
 function skip(packet) {
  for (var i = 0; i< packet.query.length; i++) {
      // we don't want to keep track of in-addr.arpa stuff
-     if (packet.query[i].match(/in-addr.arpa/)) {
+     if (packet.query[i].match(/in-addr.arpa/i)) {
+         return true;
+     }
+     if (packet.query[i].match(/.ip6.arpa/i)) {
+         return true;
+     }
+     if (packet.query[i].match(/local/i)) {
+         return true;
+     }
+     if (packet.query[i].match(/spamcop.net/i)) {
+         return true;
+     }
+     if (packet.query[i].match(/rarus.ru$/i)) {
+         return true;
+     }
+     if (packet.query[i].match(/loc$/i)) {
+         return true;
+     }
+     if (packet.query[i].match(/Dlink$/i)) {
+         return true;
+     }
+     if (packet.query[i].match(/yotaaccessinterface/i)) {
          return true;
      }
      if (packet.query[i] == 'localhost') {
