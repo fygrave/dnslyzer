@@ -14,10 +14,8 @@ sock = dgram.createSocket('udp4');
 function setup() {
     var exchange = amqpcon.exchange(config.amqp_exchange, {type: 'fanout', durable: false});
     var queue = amqpcon.queue(config.amqp_work_queue, {durable:false, exclusive: false}, function() {
-        console.log("queue");
         queue.bind(exchange, "#");
     });
-    console.log("Done");
     sock.on('message', function(rawMessage, rinfo) {
         var pack = parseDNS(rawMessage, rinfo);
         exchange.publish("dns",{packet: pack});
@@ -82,7 +80,9 @@ function parseDNS(rawMessage, rinfo) {
 	//console.log("rdlen: " + rdlen);
 	var rdata = rawMessage[offset + 5] + "." + rawMessage[offset + 4] + "." + rawMessage[offset + 3] + "." + rawMessage[offset + 2];
 	    packet.response.push(rdata);
+        if (ttl != null) {
             packet.response_ttl.push(ttl);
+        }
 	//console.log("rdata: " + rdata);
 	offset = offset + rdlen;
 	}
