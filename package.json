@@ -5,6 +5,7 @@
 "keywords":["dns", "passive", "passive dns", "malware"],
 "dependencies":{
   "solr":"",
+  "redis":"",
   "memcache": "",
   "amqp":"",
   "ejs":"",
