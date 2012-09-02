@@ -6,6 +6,7 @@ var amqp = require("amqp");
 //var uuid = require('simple-uuid');
 var crypto = require('crypto');
 var redis = require('redis');
+var packs = Array();
 
 
 //var redisc = redis.createClient(null, '172.16.185.8', 6379);
@@ -31,7 +32,7 @@ setInterval(function() { client.commit();  }, 1000);
 
 function setup() {
     var queue = amqpcon.queue(config.amqp_work_queue);
-    var queue = amqpcon.queue(config.amqp_work_queue, {durable:false, exclusive: false}, function() {
+    var queue = amqpcon.queue(config.amqp_work_queue, {durable: false, exclusive: false}, function() {
         console.log("queue");
         queue.bind(config.amqp_exchange, "#");
         queue.subscribe( {ack:true}, function(message){
@@ -51,8 +52,12 @@ amqpcon.on('ready', setup);
 
 function redis_store_update(key, value) {
     redisc.hmget(key, "count", function(err, d) {
-        var count = d;
-        if (err) { count = 1; }
+        var count = parseInt(d, 10);
+        if (err || d == "null" || d == "NaN" || d == null || isNaN(count)) {
+            count = 1;
+        }  else { count = count + 1; }
+
+
         redisc.hmset(key, {"query": value, "count": count}, function(err, msg) {
             if (err) {
                 console.log("error " + err);
@@ -80,12 +85,16 @@ function save_to_redis(packet) {
 
 
 function save_to_solr(packet) {
-
-    client.add(packet, function(err) {
-        if (err) {
-            console.log(err);
-        }
-    });
+    packs.push(packet);
+    if (packs.length > config.buffer) {
+        var npacks = packs;
+        packs = Array();
+        client.add(packet, function(err) {
+            if (err) {
+                console.log(err);
+            }
+        });
+    }
     
     / *console.log(JSON.stringify(rawMessage)); */
 
@@ -125,3 +134,7 @@ function skip(packet) {
  return false;
 }
 
+
+process.on('uncaughtException', function(err) {
+    console.log("Uncaught Exception " + err);
+});
