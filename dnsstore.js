@@ -49,23 +49,31 @@ console.log("DNS indexing. connecting to AMQP: " + config.amqp_url);
 var amqpcon = amqp.createConnection({url: config.amqp_url});
 amqpcon.on('ready', setup);
 
+function redis_store_update(key, value) {
+    redisc.hmget(key, "count", function(err, d) {
+        var count = d;
+        if (err) { count = 1; }
+        redisc.hmset(key, {"query": value, "count": count}, function(err, msg) {
+            if (err) {
+                console.log("error " + err);
+                console.log(key + " => " + value);
+            }
+        });
+    });
+
+}
+
 function save_to_redis(packet) {
     for (var i = 0; i < packet.query.length; i++) {
-        redisc.hmset(packet.query[i] +  ":" + packet.rcode, {"query":JSON.stringify(packet) }, function(err, msg) {
-            if (err) {
-                console.log("redis error: " + err);
-                console.log(packet);
-            }
-        });
+        
+        key = packet.query[i] +  ":" + packet.rcode;
+        value = JSON.stringify(packet);
+        redis_store_update(key, value);
     }
     for (var j =0; j < packet.response.length; j++) {
-        redisc.hmset(packet.response[j] + ":" + packet.rcode,  {"query":JSON.stringify(packet) }, function(err, msg) {
-            if (err) {
-                console.log("redis error: " + err);
-                console.log(packet);
-            }
-        });
-   
+        key = packet.response[j] + ":" + packet.rcode;
+        value = JSON.stringify(packet);
+        redis_store_update(key, value);
     }
 
 }
