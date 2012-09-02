@@ -1,6 +1,6 @@
 var dgram = require('dgram');
 var solr = require('solr');
-var amqp_config = require("config/amqp_config");
+var config = require("./config/config.js");
 var amqp = requre("amqp");
 //var memcache = require('memcache');
 //var uuid = require('simple-uuid');
@@ -9,13 +9,13 @@ var redis = require('redis');
 
 
 //var redisc = redis.createClient(null, '172.16.185.8', 6379);
-var redisc = redis.createClient(6381, '172.16.185.9');
+var redisc = redis.createClient(config.redis_port, config.redis_ip);
 
 
 var client = solr.createClient(
-{ host: '172.16.185.9',
-  port: 8983,
-  core: '/dns'
+{ host: config.solr_ip,
+  port: config.solr_port,
+  core: config.solr_core
 });
 
 setInterval(function() { client.commit();  }, 1000);
@@ -32,9 +32,11 @@ setInterval(function() { client.commit();  }, 1000);
 sock = dgram.createSocket('udp4');
 
 function setup() {
-    var exchange = amqpcon.exchange(amqp_config.exchange, {type: 'fanout', durable: false});
-    var queue = amqpcon.queue(amqp_config.work_queue);
-    queue.bind(amqp_config.exchange);
+    var queue = amqpcon.queue(config.amqp_work_queue);
+    var queue = amqpcon.queue(config.amqp_work_queue, {durable:false, exclusive: false}, function() {
+        console.log("queue");
+        queue.bind(config.amqp_exchange, "#");
+    });
     sock.on('message', function(rawMessage, rinfo) {
         var pack = parseDNS(rawMessage, rinfo);
         exchange.publish({packet: pack});
