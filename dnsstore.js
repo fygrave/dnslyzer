@@ -37,6 +37,7 @@ function setup() {
         queue.bind(config.amqp_exchange, "#");
         queue.subscribe( {ack:true}, function(message){
             if (skip(message.packet)) { queue.shift(); return } // skip packets we don't want
+            message.packet = clusterize(message.packet);
             save_to_redis(message.packet);
             save_to_solr(message.packet);
             queue.shift();
@@ -71,7 +72,7 @@ function redis_store_update(key, value) {
 function save_to_redis(packet) {
     for (var i = 0; i < packet.query.length; i++) {
         
-        key = packet.query[i] +  ":" + packet.rcode;
+        key = packet.query[i] +  ":" + packet.cluster[i] + ":" + packet.rcode;
         value = JSON.stringify(packet);
         redis_store_update(key, value);
     }
@@ -101,8 +102,21 @@ function save_to_solr(packet) {
 }
 
 function skip(packet) {
+    var ignore = [
+    /relays.visi.com$/i,
+    /dnsbl.void.ru$/i,
+    /spamhaus/i,
+    /userapi.com$/i,
+    /dsbl.org/i,
+    ]
  for (var i = 0; i< packet.query.length; i++) {
      // we don't want to keep track of in-addr.arpa stuff
+     for (var j = 0; j < ignore.length; j++) {
+         if (packet.query[i].match(ignore[j])) {
+             return true;
+         }
+     }
+     // some standard ignores
      if (packet.query[i].match(/in-addr.arpa/i)) {
          return true;
      }
@@ -132,6 +146,22 @@ function skip(packet) {
      }
  }
  return false;
+}
+
+
+function clusterize(packet) {
+
+    packet.cluster = Array();
+    for (var i = 0; i< packet.query.length; i++) {
+        var doms = packet.query[i].split('.');
+        if (doms.length < 2) {
+            packet.cluster.push(packet.query[i].length);
+        } else {
+            var c = doms[doms.length - 1 ] + doms[doms.length -2].length.toString();
+            packet.cluster.push(c);
+        }
+    }
+    return packet;
 }
 
 
