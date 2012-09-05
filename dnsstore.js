@@ -52,19 +52,30 @@ var amqpcon = amqp.createConnection({url: config.amqp_url});
 amqpcon.on('ready', setup);
 
 function redis_store_update(key, value) {
+    var firstseen = Date();
+    var lastseen = Date();
+    
     redisc.hmget(key, "count", function(err, d) {
         var count = parseInt(d, 10);
         if (err || d == "null" || d == "NaN" || d == null || isNaN(count)) {
             count = 1;
-        }  else { count = count + 1; }
 
-
-        redisc.hmset(key, {"query": value, "count": count}, function(err, msg) {
-            if (err) {
-                console.log("error " + err);
-                console.log(key + " => " + value);
-            }
-        });
+        }  else { 
+            count = count + 1;
+            redisc.hmget(key, "firstseen", function(err, d) {
+                if (!err) {
+                    firstseen = d;
+                    console.log(d);
+                }
+        
+                redisc.hmset(key, {"query": value, "count": count}, function(err, msg) {
+                    if (err) {
+                        console.log("error " + err);
+                        console.log(key + " => " + value);
+                    }
+                });
+            });
+        } // else
     });
 
 }
@@ -157,7 +168,7 @@ function clusterize(packet) {
         if (doms.length < 2) {
             packet.cluster.push(packet.query[i].length);
         } else {
-            var c = doms[doms.length - 1 ] + doms[doms.length -2].length.toString();
+            var c = doms[doms.length - 1 ] + "_" + doms[doms.length -2].length.toString() + "_" + packet.query[i].length.toString(); // similarity distance
             packet.cluster.push(c);
         }
     }

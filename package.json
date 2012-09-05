@@ -6,6 +6,7 @@
 "dependencies":{
   "solr":"",
   "redis":"",
+  "hiredis":"",
   "memcache": "",
   "amqp":"",
   "ejs":"",
