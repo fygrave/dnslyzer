@@ -78,7 +78,8 @@ function parseDNS(rawMessage, rinfo) {
     	
 	var rdlen = rawMessage[offset] * 256 + rawMessage[offset +1];
 	//console.log("rdlen: " + rdlen);
-	var rdata = rawMessage[offset + 5] + "." + rawMessage[offset + 4] + "." + rawMessage[offset + 3] + "." + rawMessage[offset + 2];
+    // bug!!
+	var rdata = rawMessage[offset + 2] + "." + rawMessage[offset + 3] + "." + rawMessage[offset + 4] + "." + rawMessage[offset + 5];
 	    packet.response.push(rdata);
         if (ttl != null) {
             packet.response_ttl.push(ttl);
