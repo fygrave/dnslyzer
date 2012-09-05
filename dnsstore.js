@@ -55,27 +55,25 @@ function redis_store_update(key, value) {
     var firstseen = Date();
     var lastseen = Date();
     
-    redisc.hmget(key, "count", function(err, d) {
-        var count = parseInt(d, 10);
+
+    redisc.hmget(key, "count", "firstseen", function(err, d) {
+        var count = parseInt(d[0], 10);
         if (err || d == "null" || d == "NaN" || d == null || isNaN(count)) {
             count = 1;
 
         }  else { 
             count = count + 1;
-            redisc.hmget(key, "firstseen", function(err, d) {
-                if (!err) {
-                    firstseen = d;
-                    console.log(d);
-                }
+            if (d[1] != null && d[1] != "null") {
+                firstseen = d[1];
+            }
+        }
         
-                redisc.hmset(key, {"query": value, "count": count}, function(err, msg) {
-                    if (err) {
-                        console.log("error " + err);
-                        console.log(key + " => " + value);
-                    }
-                });
-            });
-        } // else
+        redisc.hmset(key, {"query": value, "count": count, "lastseen": lastseen, "firstseen": firstseen}, function(err, msg) {
+            if (err) {
+                console.log("error " + err);
+                console.log(key + " => " + value);
+            }
+        });
     });
 
 }
@@ -88,7 +86,7 @@ function save_to_redis(packet) {
         redis_store_update(key, value);
     }
     for (var j =0; j < packet.response.length; j++) {
-        key = packet.response[j] + ":" + packet.rcode;
+        key = packet.response[j] + ";" + packet.query[j];
         value = JSON.stringify(packet);
         redis_store_update(key, value);
     }
