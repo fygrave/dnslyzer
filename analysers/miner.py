@@ -5,6 +5,7 @@ import re
 import json
 import sys
 
+
 import argparse
 
 parser = argparse.ArgumentParser(description='Map domains related to given domain')
