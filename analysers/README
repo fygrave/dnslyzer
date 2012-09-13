@@ -1,0 +1,12 @@
+These are various analyser examples to mine interesting data from stored DNS traffic
+
+
+miner.py - generic relationship miner by domain name.
+palevo.py - generative domain miner per dns zone
+
+the output produced is .dot file suitable for graphviz graph drawing.
+
+i.e. sample usage would be something like:
+
+ ./miner.py somedomain.org > somedomain.org.dot
+  fdp -o somedomain.org.png -Tpng somedomain.org.dot
