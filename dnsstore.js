@@ -115,6 +115,11 @@ function skip(packet) {
     /relays.visi.com$/i,
     /dnsbl.void.ru$/i,
     /spamhaus/i,
+    /blitzed.org/i,
+    /csplc.org/i,
+    /mail-abuse.org/i,
+    /njabl.org/i,
+    /barracudacentral.org/i,
     /userapi.com$/i,
     /dsbl.org/i,
     ]
@@ -158,6 +163,20 @@ function skip(packet) {
 }
 
 
+var padInteger = function(number) {
+          return (number < 10 ? '0' : '') + number.toString()    
+}
+
+
+
+var getDateInt = function() {
+    var d = new Date()
+    var dateline = padInteger(d.getFullYear()) + padInteger(d.getMonth()+1) + padInteger(d.getDate())
+    return parseInt(dateline)
+
+}
+
+
 function clusterize(packet) {
 
     packet.cluster = Array();
@@ -166,7 +185,7 @@ function clusterize(packet) {
         if (doms.length < 2) {
             packet.cluster.push(packet.query[i].length);
         } else {
-            var c = doms[doms.length - 1 ] + "_" + doms[doms.length -2].length.toString() + "_" + packet.query[i].length.toString(); // similarity distance
+            var c = doms[doms.length - 1 ] + "_" + doms[doms.length -2].length.toString() + "_" + packet.query[i].length.toString() + getDateInt().toString(); 
             packet.cluster.push(c);
         }
     }

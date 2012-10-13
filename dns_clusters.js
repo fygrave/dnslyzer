@@ -47,6 +47,11 @@ function skip(packet) {
     /relays.visi.com$/i,
     /dnsbl.void.ru$/i,
     /spamhaus/i,
+    /blitzed.org/i,
+    /csplc.org/i,
+    /mail-abuse.org/i,
+    /njabl.org/i,
+    /barracudacentral.org/i,
     /userapi.com$/i,
     /dsbl.org/i,
     ]
