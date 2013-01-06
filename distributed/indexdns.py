@@ -59,7 +59,7 @@ def indexp(pack):
         if r.q.qtype == 1:
             key =  "%s:%s:%s:%s" %(r.q.qname, cluster_id(r.q.qname), get_date(), r.header.rcode)
             red = rediscl
-            red.set(key, dnspack.encode('hex'))
+            red.hmset(key, {'raw':dnspack.encode('hex'), 'date': datetime.datetime.now()})
     for frecord in r.rr:
         print frecord
         print frecord.rtype
@@ -67,7 +67,7 @@ def indexp(pack):
             key =  "%s:%s:%s:%s" %(frecord.get_rname(), cluster_id(frecord.get_rname()), get_date(), r.header.rcode)
             key2 =  "%s;%s;%s" %(frecord.rdata, frecord.get_rname(), get_date())
             red = rediscl
-            red.set(key, dnspack.encode('hex'))
+            red.hmset(key, {'raw':dnspack.encode('hex'), 'date': datetime.datetime.now(), 'pack': "%s" % r} )
             red.set(key2, dnspack.encode('hex'))
             print frecord
         #print frecord
