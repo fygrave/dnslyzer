@@ -6,6 +6,7 @@ import celery
 import  indexdns
 import base64
 import celeryconfig
+import argparse
 
 
 celery = celery.Celery('indexdns')
@@ -30,8 +31,15 @@ class DNSReceiver(SocketServer.BaseRequestHandler):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Capture DNS forward packets')
+    parser.add_argument('config', type=file, help= 'config file')
+    parser.set_defaults(config = "dnsdexer.cfg")
+    r = parser.parse_args()
+    print r.config
+
+
     config = CFG.ConfigParser()
-    config.read("dnsdexer.cfg")
+    config.readfp(r.config)
     HOST, PORT = "0.0.0.0", int(config.get("main", "dnsport"))
     server = SocketServer.UDPServer((HOST, PORT), DNSReceiver)
     server.serve_forever()
