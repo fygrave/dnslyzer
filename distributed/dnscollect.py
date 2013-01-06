@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 import SocketServer
+import ConfigParser as CFG
+
+
 
 
 class DNSReceiver(SocketServer.BaseRequestHandler):
@@ -17,6 +20,8 @@ class DNSReceiver(SocketServer.BaseRequestHandler):
 
 
 if __name__ == "__main__":
-    HOST, PORT = "localhost", 325
+    config = CFG.ConfigParser()
+    config.read("dnsdexer.cfg")
+    HOST, PORT = "localhost", int(config.get("main", "dnsport"))
     server = SocketServer.UDPServer((HOST, PORT), DNSReceiver)
     server.serve_forever()
