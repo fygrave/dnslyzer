@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import SocketServer
 import ConfigParser as CFG
+import logging
 
 
 
@@ -8,11 +9,6 @@ import ConfigParser as CFG
 class DNSReceiver(SocketServer.BaseRequestHandler):
 
 
-    def __init__(self, request, client_address, server):
-        logger = logging.getLogger()
-        logger.info("Server started")
-        SocketServer.BaseRequestHandler.__init__(self, request, client_address, server)
-        return
     def handle(self):
         logger = logging.getLogger()
         data = self.request[0]
@@ -22,6 +18,6 @@ class DNSReceiver(SocketServer.BaseRequestHandler):
 if __name__ == "__main__":
     config = CFG.ConfigParser()
     config.read("dnsdexer.cfg")
-    HOST, PORT = "localhost", int(config.get("main", "dnsport"))
+    HOST, PORT = "0.0.0.0", int(config.get("main", "dnsport"))
     server = SocketServer.UDPServer((HOST, PORT), DNSReceiver)
     server.serve_forever()
