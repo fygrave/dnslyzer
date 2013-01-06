@@ -13,6 +13,20 @@ import datetime
 celery = Celery()
 celery.config_from_object('celeryconfig')
 
+
+
+from celery.signals import worker_init
+
+rediscl = None
+
+@worker_init.connect
+def on_init(signal, sender ):
+    print "init redis"
+    global rediscl
+    rediscl =  getredis()
+
+
+
 def getredis():
     config = CFG.ConfigParser()
     config.read("dnsdexer.cfg")
@@ -34,6 +48,7 @@ def cluster_id(domain_label):
 
 @celery.task
 def indexp(pack):
+    global rediscl
     logger = logging.getLogger()
     logger.info("got dnspack")
     #print base64.b64decode(pack).encode('hex')
@@ -43,7 +58,7 @@ def indexp(pack):
         print r.q.qtype
         if r.q.qtype == 1:
             key =  "%s:%s:%s:%s" %(r.q.qname, cluster_id(r.q.qname), get_date(), r.header.rcode)
-            red = getredis()
+            red = rediscl
             red.set(key, dnspack.encode('hex'))
     for frecord in r.rr:
         print frecord
@@ -51,7 +66,7 @@ def indexp(pack):
         if frecord.rtype == 1:
             key =  "%s:%s:%s:%s" %(frecord.get_rname(), cluster_id(frecord.get_rname()), get_date(), r.header.rcode)
             key2 =  "%s;%s;%s" %(frecord.rdata, frecord.get_rname(), get_date())
-            red = getredis()
+            red = rediscl
             red.set(key, dnspack.encode('hex'))
             red.set(key2, dnspack.encode('hex'))
             print frecord
