@@ -39,10 +39,12 @@ def get_date():
 
 def cluster_id(domain_label):
     domain = "%s" % (domain_label)
-
-    zone = domain[domain.rindex('.')+1:]
+    zone = "nozone"
+    try:
+        zone = domain[domain.rindex('.')+1:]
+    except Exception, e:
+        pass
     c =  "%s_%s" % (zone, len(domain))
-    print c
     return c
 
 
@@ -53,24 +55,22 @@ def indexp(pack):
     logger.info("got dnspack")
     #print base64.b64decode(pack).encode('hex')
     dnspack = base64.b64decode(pack)[12:]
-    r = dnslib.DNSRecord.parse(dnspack)
-    if r.header.rcode != 0:
-        print r.q.qtype
-        if r.q.qtype == 1:
-            key =  "%s:%s:%s:%s" %(r.q.qname, cluster_id(r.q.qname), get_date(), r.header.rcode)
-            red = rediscl
-            red.hmset(key, {'raw':dnspack.encode('hex'), 'date': datetime.datetime.now()})
-    for frecord in r.rr:
-        print frecord
-        print frecord.rtype
-        if frecord.rtype == 1:
-            key =  "%s:%s:%s:%s" %(frecord.get_rname(), cluster_id(frecord.get_rname()), get_date(), r.header.rcode)
-            key2 =  "%s;%s;%s" %(frecord.rdata, frecord.get_rname(), get_date())
-            red = rediscl
-            red.hmset(key, {'raw':dnspack.encode('hex'), 'date': datetime.datetime.now(), 'pack': "%s" % r} )
-            red.set(key2, dnspack.encode('hex'))
-            print frecord
-        #print frecord
+    try:
+        r = dnslib.DNSRecord.parse(dnspack)
+        if r.header.rcode != 0:
+            if r.q.qtype == 1:
+                key =  "%s:%s:%s:%s" %(r.q.qname, cluster_id(r.q.qname), get_date(), r.header.rcode)
+                red = rediscl
+                red.hmset(key, {'raw':dnspack.encode('hex'), 'date': datetime.datetime.now()})
+        for frecord in r.rr:
+            if frecord.rtype == 1:
+                key =  "%s:%s:%s:%s" %(frecord.get_rname(), cluster_id(frecord.get_rname()), get_date(), r.header.rcode)
+                key2 =  "%s;%s;%s" %(frecord.rdata, frecord.get_rname(), get_date())
+                red = rediscl
+                red.hmset(key, {'raw':dnspack.encode('hex'), 'date': datetime.datetime.now(), 'pack': "%s" % r} )
+                red.set(key2, dnspack.encode('hex'))
+    except Exception, e:
+        print "Error: %s while parsing %s" % (e, dnspack.encode('hex'))
 
 
 
