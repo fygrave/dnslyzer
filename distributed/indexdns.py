@@ -50,6 +50,7 @@ def cluster_id(domain_label):
 
 @celery.task
 def indexp(pack):
+    print "doing index"
     global rediscl
     logger = logging.getLogger()
     logger.info("got dnspack")
@@ -59,15 +60,24 @@ def indexp(pack):
         r = dnslib.DNSRecord.parse(dnspack)
         if r.header.rcode != 0:
             if r.q.qtype == 1:
-                key =  "%s:%s:%s:%s" %(r.q.qname, cluster_id(r.q.qname), get_date(), r.header.rcode)
+                key =  "%s:%s:%s" %(r.q.qname, cluster_id(r.q.qname), r.header.rcode)
                 red = rediscl
                 red.hmset(key, {'raw':dnspack.encode('hex'), 'date': datetime.datetime.now()})
         for frecord in r.rr:
             if frecord.rtype == 1:
-                key =  "%s:%s:%s:%s" %(frecord.get_rname(), cluster_id(frecord.get_rname()), get_date(), r.header.rcode)
-                key2 =  "%s;%s;%s" %(frecord.rdata, frecord.get_rname(), get_date())
+                key =  "%s:%s:%s" %(frecord.get_rname(), cluster_id(frecord.get_rname()), r.header.rcode)
+                key2 =  "%s;%s" %(frecord.rdata, frecord.get_rname())
                 red = rediscl
-                red.hmset(key, {'raw':dnspack.encode('hex'), 'date': datetime.datetime.now(), 'pack': "%s" % r} )
+                v = red.hmget(key, "count")
+                count = 1
+                firstseen = datetime.datetime.now()
+                if v[0] != None:
+                    print v[0]
+                    count = count + int(v[0])
+                    firstseen = red.hmget(key, "firstseen")
+
+                print 'count %i ' % (count)
+                red.hmset(key, {'raw':dnspack.encode('hex'), 'firstseen': firstseen, 'lastseen': datetime.datetime.now(), 'count': count} )
                 red.set(key2, dnspack.encode('hex'))
     except Exception, e:
         print "Error: %s while parsing %s" % (e, dnspack.encode('hex'))
