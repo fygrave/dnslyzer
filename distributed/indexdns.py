@@ -68,13 +68,13 @@ def indexp(pack):
                 key =  "%s:%s:%s" %(frecord.get_rname(), cluster_id(frecord.get_rname()), r.header.rcode)
                 key2 =  "%s;%s" %(frecord.rdata, frecord.get_rname())
                 red = rediscl
-                v = red.hmget(key, "count")
+                v = red.hmget(key, "count", "firstseen")
                 count = 1
                 firstseen = datetime.datetime.now()
                 if v[0] != None:
                     print v[0]
                     count = count + int(v[0])
-                    firstseen = red.hmget(key, "firstseen")
+                    firstseen = v[1]
 
                 print 'count %i ' % (count)
                 red.hmset(key, {'raw':dnspack.encode('hex'), 'firstseen': firstseen, 'lastseen': datetime.datetime.now(), 'count': count} )
