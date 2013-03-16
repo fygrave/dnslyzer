@@ -47,6 +47,14 @@ def cluster_id(domain_label):
     c =  "%s_%s" % (zone, len(domain))
     return c
 
+def should_ignore(name):
+    ign = [".Dlink", ".local", "yotaaccessinterface", ".mail-abuse.org", ".dnsbl.void.ru", ".relays.visi.com", ".spamhaus", ".blitzed.org", "csplc.org", "njabl.org", "userapi.com", "dsbl.org"]
+    for f in ign:
+        if name.find(f) != -1:
+            return True
+
+    return False
+
 
 @celery.task
 def indexp(pack):
@@ -65,6 +73,8 @@ def indexp(pack):
                 red.hmset(key, {'raw':dnspack.encode('hex'), 'date': datetime.datetime.now()})
         for frecord in r.rr:
             if frecord.rtype == 1:
+                if should_ignore("%s"%frecord.get_rname()):
+                        continue
                 key =  "%s:%s:%s" %(frecord.get_rname(), cluster_id(frecord.get_rname()), r.header.rcode)
                 key2 =  "%s;%s" %(frecord.rdata, frecord.get_rname())
                 red = rediscl
