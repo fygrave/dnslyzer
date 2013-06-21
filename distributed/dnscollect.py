@@ -27,6 +27,7 @@ class DNSReceiver(SocketServer.BaseRequestHandler):
         logger = logging.getLogger()
         data = self.request[0]
         logger.info("%s" % self.client_address[0])
+        print "got packet"
         indexdns.indexp.delay(base64.b64encode(data))
 
 
