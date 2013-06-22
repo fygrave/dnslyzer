@@ -17,6 +17,8 @@ config = None
 class DNSReceiver(SocketServer.BaseRequestHandler):
     config = None
     amqpconn = None
+    amqpchann = None
+    anqpexchange = None
 
 
     def __init__(self, request, client_address, server):
