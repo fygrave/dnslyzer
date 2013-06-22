@@ -32,13 +32,13 @@ class DNSReceiver(SocketServer.BaseRequestHandler):
         if r.header.rcode != 0:
             if r.q.qtype == 1:
                 pack =  {"qname": "%s"%r.q.qname, "response": "",  "rcode": r.header.rcode, "sender": "127.0.0.1", "time": time.time()}
-                amqpchann.basic_publish(exchange = amqpexchange, routing_key="%s.%s.unknown" % (pack["qname"], pack["rcode"]),
+                self.amqpchann.basic_publish(exchange = self.amqpexchange, routing_key="%s.%s.unknown" % (pack["qname"], pack["rcode"]),
                         body = json.dumps(pack))
 
         for frecord in r.rr:
             if frecord.rtype == 1:
                 pack =  {"qname": "%s"% frecord.get_rname(),   "rcode": r.header.rcode, "sender": "127.0.0.1", "time": time.time(), "response":"%s"%frecord.rdata}
-                amqpchann.basic_publish(exchange = amqpexchange, routing_key="%s.%s.%s" % (pack["qname"],  pack["rcode"], pack["response"]),
+                self.amqpchann.basic_publish(exchange = self.amqpexchange, routing_key="%s.%s.%s" % (pack["qname"],  pack["rcode"], pack["response"]),
                         body = json.dumps(pack))
 
 
