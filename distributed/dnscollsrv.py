@@ -9,6 +9,9 @@ import base64
 import argparse
 
 
+config = None
+
+
 
 
 class DNSReceiver(SocketServer.BaseRequestHandler):
@@ -17,6 +20,7 @@ class DNSReceiver(SocketServer.BaseRequestHandler):
 
 
     def __init__(self, request, client_address, server):
+        self.config = config
         logger = logging.getLogger()
         logger.info("Server started")
         SocketServer.BaseRequestHandler.__init__(self, request, client_address, server)
@@ -56,6 +60,7 @@ if __name__ == "__main__":
     parser.set_defaults(config = "dnsdexer.cfg")
     r = parser.parse_args()
     print r.config
+    global config
 
 
     config = CFG.ConfigParser()
