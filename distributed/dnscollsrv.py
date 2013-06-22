@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import SocketServer
+import time
 import dnslib
 import ConfigParser as CFG
 import logging
