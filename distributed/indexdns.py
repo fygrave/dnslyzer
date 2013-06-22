@@ -12,6 +12,7 @@ import datetime
 import math
 import string
 import time
+import json
 
 celery = Celery()
 celery.config_from_object('celeryconfig')
@@ -26,8 +27,7 @@ amqpchann = None
 amqpexchange = None
 
 
-@worker_init.connect
-def on_init(signal, sender ):
+def do_inits():
     print "Init"
     global amqpconn
     global amqpchann
@@ -36,8 +36,8 @@ def on_init(signal, sender ):
     config.read("dnsdexer.cfg")
     amqpconn = pika.BlockingConnection(pika.ConnectionParameters(config.get("amqp", "host"), int(config.get("amqp", "port")), "/"))
     amqpchann = amqpconn.channel()
-    amqpchann.exchange_declare(exchange=amqpexchange, type='fanout')
     amqpexchange = config.get("amqp", "packetex")
+    amqpchann.exchange_declare(exchange=amqpexchange, type='fanout')
 
 
 
@@ -112,15 +112,15 @@ def indexp(pack):
         r = dnslib.DNSRecord.parse(dnspack)
         if r.header.rcode != 0:
             if r.q.qtype == 1:
-                pack =  {"qname": r.q.qname, "response": "", "cluster": cluster_id(r.q.qname), "rcode": r.header.rcode, "sender": "127.0.0.1", "time": time.time()}
-                amqpconn.basic_publish(exchange = amqpexchange, routing_key="%s.%s.%s.unknown" % (pack["qname"], pack["cluster"], pack["rcode"]),
+                pack =  {"qname": "%s"%r.q.qname, "response": "", "cluster": cluster_id(r.q.qname), "rcode": r.header.rcode, "sender": "127.0.0.1", "time": time.time()}
+                amqpchann.basic_publish(exchange = amqpexchange, routing_key="%s.%s.%s.unknown" % (pack["qname"], pack["cluster"], pack["rcode"]),
                         body = json.dumps(pack))
 
         for frecord in r.rr:
             if frecord.rtype == 1:
                 key =  "%s:%s:%s:%s" %(frecord.get_rname(), cluster_id(frecord.get_rname()), frecord.rdata, r.header.rcode)
-                pack =  {"qname": frecord.get_rname(),  "cluster": cluster_id(frecord.get_rname()), "rcode": r.header.rcode, "sender": "127.0.0.1", "time": time.time(), "response":frecord.rdata}
-                amqpconn.basic_publish(exchange = amqpexchange, routing_key="%s.%s.%s.%s" % (pack["qname"], pack["cluster"], pack["rcode"], pack["response"]),
+                pack =  {"qname": "%s"% frecord.get_rname(),  "cluster": cluster_id(frecord.get_rname()), "rcode": r.header.rcode, "sender": "127.0.0.1", "time": time.time(), "response":"%s"%frecord.rdata}
+                amqpchann.basic_publish(exchange = amqpexchange, routing_key="%s.%s.%s.%s" % (pack["qname"], pack["cluster"], pack["rcode"], pack["response"]),
                         body = json.dumps(pack))
     except Exception, e:
         print "Error: %s while parsing %s" % (e, dnspack.encode('hex'))
@@ -128,6 +128,6 @@ def indexp(pack):
 
 
 if __name__ == '__main__':
-    getredis()
+    do_inits()
     tasks.register(indexp)
     celery.worker_main()
