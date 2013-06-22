@@ -1,6 +1,6 @@
 #!/usr/bin.env python
 
-BROKER_URL = 'localhost'
+BROKER_URL = '140.109.17.116'
 CELERY_TASK_SERIALIZER='json'
 # lots of   queues
 #CELERY_RESULT_BACKEND = 'amqp'
