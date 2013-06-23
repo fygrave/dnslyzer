@@ -1,3 +1,3 @@
 #!/bin/sh
 
-celery worker -I indexdns -E -c 40
+celery worker -I indexdns -E -c 90
