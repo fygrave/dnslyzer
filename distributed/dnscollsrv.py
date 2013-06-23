@@ -9,6 +9,7 @@ import base64
 import argparse
 
 
+global config
 config = None
 
 
