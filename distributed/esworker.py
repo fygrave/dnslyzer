@@ -10,9 +10,10 @@ import datetime
 import math
 import string
 import json
+import time
 
-
-
+def get_es_date(d):
+    return (datetime.datetime.fromtimestamp(d).strftime("%Y-%m-%dT%H:%M:%S.000Z"))
 
 def get_date():
     d = datetime.datetime.now()
@@ -46,10 +47,9 @@ def indcallback(ch, method, properties, body):
                      'store': 'yes',
                      'type': u'ip'
                      },
-            u'lastseen': { 'boost':1.0,
-                'index': 'analyzed', 'store': 'yes', 'type': 'date', 'format': 'date_time'}
-                    },
-            u'firstseen': { 'boost':1.0,
+               u'lastseen': { 'boost':1.0,
+                'index': 'analyzed', 'store': 'yes', 'type': 'date', 'format': 'date_time'},
+               u'firstseen': { 'boost':1.0,
                 'index': 'analyzed', 'store': 'yes', 'type': 'date', 'format': 'date_time'}
                     }
 
@@ -60,6 +60,8 @@ def indcallback(ch, method, properties, body):
 
 
     pack = json.loads(body)
+    pack["firstseen"] = get_es_date(time.time())
+    pack["lastseen"] = get_es_date(time.time())
     esconn.index(pack, get_index(), "dns_type")
 
 
