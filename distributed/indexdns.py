@@ -7,10 +7,11 @@ import logging
 import dnslib
 import base64
 import ConfigParser as CFG
-import redis
+import pika
 import datetime
 import math
 import string
+import time
 
 celery = Celery()
 celery.config_from_object('celeryconfig')
@@ -19,21 +20,28 @@ celery.config_from_object('celeryconfig')
 
 from celery.signals import worker_init
 
-rediscl = None
+
+amqpconn = None
+amqpchann = None
+amqpexchange = None
+
 
 @worker_init.connect
 def on_init(signal, sender ):
-    print "init redis"
-    global rediscl
-    rediscl =  getredis()
-
-
-
-def getredis():
+    print "Init"
+    global amqpconn
+    global amqpchann
+    global amqpexchange
     config = CFG.ConfigParser()
     config.read("dnsdexer.cfg")
-    r = redis.Redis(host = config.get("main","redishost"), port = int(config.get("main", "redisport")))
-    return r
+    amqpconn = pika.BlockingConnection(pika.ConnectionParameters(config.get("amqp", "host"), int(config.get("amqp", "port")), "/"))
+    amqpchann = connection.channel()
+    amqpchann.exchange_declare(exchange=amqpexchange, type='fanout')
+    amqpexchange = config.get("amqp", "packetex")
+
+
+
+
 
 def get_date():
     d = datetime.datetime.now()
@@ -93,7 +101,9 @@ def entropy(string):
 
 @celery.task
 def indexp(pack):
-    global rediscl
+    global amqpconn
+    global amqpchann
+    global amqpexchange
     logger = logging.getLogger()
     logger.info("got dnspack")
     #print base64.b64decode(pack).encode('hex')
@@ -102,18 +112,16 @@ def indexp(pack):
         r = dnslib.DNSRecord.parse(dnspack)
         if r.header.rcode != 0:
             if r.q.qtype == 1:
-                key =  "%s:%s:_:%s" %(r.q.qname, cluster_id(r.q.qname), r.header.rcode)
-                red = rediscl
-                red.incr(key)
+                pack =  {"qname": r.q.qname, "response": "", "cluster": cluster_id(r.q.qname), "rcode": r.header.rcode, "sender": "127.0.0.1", "time": time.time()}
+                amqpconn.basic_publish(exchange = amqpexchange, routing_key="%s.%s.%s.unknown" % (pack["qname"], pack["cluster"], pack["rcode"]),
+                        body = json.dumps(pack))
+
         for frecord in r.rr:
-            if should_ignore("%s"%frecord.get_rname()):
-                continue
             if frecord.rtype == 1:
                 key =  "%s:%s:%s:%s" %(frecord.get_rname(), cluster_id(frecord.get_rname()), frecord.rdata, r.header.rcode)
-                #key2 =  "%s;%s" %(frecord.rdata, frecord.get_rname())
-                red = rediscl
-                red.incr(key)
-                #red.incr(key2)
+                pack =  {"qname": frecord.get_rname(),  "cluster": cluster_id(frecord.get_rname()), "rcode": r.header.rcode, "sender": "127.0.0.1", "time": time.time(), "response":frecord.rdata}
+                amqpconn.basic_publish(exchange = amqpexchange, routing_key="%s.%s.%s.%s" % (pack["qname"], pack["cluster"], pack["rcode"], pack["response"]),
+                        body = json.dumps(pack))
     except Exception, e:
         print "Error: %s while parsing %s" % (e, dnspack.encode('hex'))
 
