@@ -7,29 +7,31 @@ import logging
 import pika
 import base64
 import argparse
+import json
 
 
-config = None
-
+global config
+parser = argparse.ArgumentParser(description='Capture DNS forward packets')
+parser.add_argument('config', type=file, help= 'config file')
+parser.set_defaults(config = "dnsdexer.cfg")
+r = parser.parse_args()
+config = CFG.ConfigParser()
+config.readfp(r.config)
 
 
 
 class DNSReceiver(SocketServer.BaseRequestHandler):
-    config = None
-    amqpconn = None
-    amqpchann = None
-    anqpexchange = None
+    conf = config
 
+    amqpconn = pika.BlockingConnection(pika.ConnectionParameters(config.get("amqp", "host"), int(config.get("amqp", "port")), "/"))
+    amqpchann = amqpconn.channel()
+    amqpexchange = config.get("amqp", "packetex")
+    amqpchann.exchange_declare(exchange=amqpexchange, type='fanout')
 
     def __init__(self, request, client_address, server):
-        self.config = config
         logger = logging.getLogger()
         logger.info("Server started")
         SocketServer.BaseRequestHandler.__init__(self, request, client_address, server)
-        self.amqpconn = pika.BlockingConnection(pika.ConnectionParameters(self.config.get("amqp", "host"), int(self.config.get("amqp", "port")), "/"))
-        self.amqpchann = self.amqpconn.channel()
-        self.amqpexchange = self.config.get("amqp", "packetex")
-        self.amqpchann.exchange_declare(exchange=self.amqpexchange, type='fanout')
         return
 
     def parsepack(self, data):
