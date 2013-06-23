@@ -35,7 +35,7 @@ def on_init(signal, sender ):
     config = CFG.ConfigParser()
     config.read("dnsdexer.cfg")
     amqpconn = pika.BlockingConnection(pika.ConnectionParameters(config.get("amqp", "host"), int(config.get("amqp", "port")), "/"))
-    amqpchann = connection.channel()
+    amqpchann = amqpconn.channel()
     amqpchann.exchange_declare(exchange=amqpexchange, type='fanout')
     amqpexchange = config.get("amqp", "packetex")
 
