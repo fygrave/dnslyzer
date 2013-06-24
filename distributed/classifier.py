@@ -49,12 +49,11 @@ amqpconn = pika.BlockingConnection(pika.ConnectionParameters(config.get("amqp", 
 amqpchann = amqpconn.channel()
 amqpexchange = config.get("amqp", "packetex")
 amqpchann.exchange_declare(exchange=amqpexchange, type='fanout')
-esconn = ES([config.get("main","elasticsearch")])
 
 
-amqpchann.queue_declare(queue='es')
-amqpchann.queue_bind(exchange = amqpexchange, queue='es')
+amqpchann.queue_declare(queue='classify', autodelete = True)
+amqpchann.queue_bind(exchange = amqpexchange, queue='classify')
 
-amqpchann.basic_consume(indcallback, queue='es', no_ack = True)
+amqpchann.basic_consume(indcallback, queue='classify', no_ack = True)
 amqpchann.start_consuming()
 root = Node()
