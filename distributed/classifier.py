@@ -38,6 +38,9 @@ def indcallback(ch, method, properties, body):
     v[0] = entropy(pack["qname"])
     v[1] = len(pack["qname"])
     v[2] = pack["rcode"]
+    v[3] = ord(pack["qname"][len(pack["qname"]])
+    v[4] = ord(pack["qname"][len(pack["qname"]-1])
+    v[5] = ord(pack["qname"][len(pack["qname"]-2])
     root.trickle(v)
     print root
 
