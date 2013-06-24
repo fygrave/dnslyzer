@@ -42,7 +42,11 @@ def indcallback(ch, method, properties, body):
     v[4] = ord(pack["qname"][len(pack["qname"])-2:len(pack["qname"])-1])
     v[5] = ord(pack["qname"][len(pack["qname"])-3:len(pack["qname"])-2])
     root.trickle(v)
-    print root
+    try:
+        print root
+        # sync to redis
+    except:
+        pass
 
 
 
