@@ -21,14 +21,19 @@ rediscli = redis.Redis(host = 'localhost', port =  6380)
 
 def dump_clusters(entry_node):
 
-    print entry_node.ident()
-    for ent in entry_node.entries:
+    for ent in entry_node.children:
+	print ent
         val = ''
-        for v in ent.vectors:
-            val = "%s %s" % (val, v.domain)
-        if len(ent.vectors) != 0:
-            key = ent.vectors[0].domain
-            rediscli.set(key, val)
+	print type(ent)
+	if (type(ent) == Leaf):
+          for entt in ent.entries:
+		print type(entt)
+		if (type(entt) == Entry):
+			for v in entt.vectors:
+			    val = "%s %s" % (val, v.domain)
+			if len(entt.vectors) != 0:
+			    key = entt.vectors[0].domain
+			    rediscli.getset(key, val)
 
 def entropy(string):
     "Calculates the Shannon entropy of a string"
@@ -56,10 +61,10 @@ def indcallback(ch, method, properties, body):
     v[5] = ord(pack["qname"][len(pack["qname"])-3:len(pack["qname"])-2])
     root.trickle(v)
     try:
-        print root
         dump_clusters(root)
         # sync to redis
-    except:
+    except  Exception, e:
+	print e
         pass
 
 
