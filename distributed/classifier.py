@@ -14,6 +14,7 @@ from birch import *
 
 
 
+root = Node()
 global root
 
 def entropy(string):
