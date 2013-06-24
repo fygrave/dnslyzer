@@ -400,6 +400,9 @@ class Entry(BaseNode):
     # has vectors
     is_entry = True
 
+    def __str__(self):
+        return "Entry :"
+
     def __init__(self,*args,**kwargs):
         self.vectors = []
         super(Entry,self).__init__(*args,**kwargs)
