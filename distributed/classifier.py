@@ -34,6 +34,7 @@ def indcallback(ch, method, properties, body):
 
     pack = json.loads(body)
     v = Vector()
+    v.domain = pack["qname"]
     v[0] = entropy(pack["qname"])
     v[1] = len(pack["qname"])
     v[2] = pack["rcode"]
