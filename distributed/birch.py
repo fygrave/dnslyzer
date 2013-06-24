@@ -401,10 +401,10 @@ class Entry(BaseNode):
     is_entry = True
 
     def __str__(self):
-        if len(self.vectors) == 0:
-            return "Entry :"
-        else:
-            return "Entry : %s" % (self.vectors[0].domain)
+        s = ''
+        for v in self.vectors:
+            s = "%s %s"%(s, v.domain)
+        return "Entry : %s" % (s)
 
     def __init__(self,*args,**kwargs):
         self.vectors = []
