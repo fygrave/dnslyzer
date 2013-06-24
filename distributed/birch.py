@@ -401,10 +401,10 @@ class Entry(BaseNode):
     is_entry = True
 
     def __str__(self):
-        s = ''
-        for v in self.vectors:
-            s = "%s %s"%(s, v.domain)
-        return "Entry : %s" % (s)
+        #s = ''
+        #for v in self.vectors:
+        #    s = "%s %s"%(s, v.domain)
+        return "Entry : %s (%i total)" % (self.vectors[0].domain, len(self.vectors))
 
     def __init__(self,*args,**kwargs):
         self.vectors = []
