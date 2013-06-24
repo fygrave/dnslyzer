@@ -11,11 +11,24 @@ import math
 import string
 import json
 from birch import *
-
+import redis
 
 
 root = Node()
 global root
+rediscli = redis.Redis(host = 'localhost', port =  6380)
+
+
+def dump_clusters(entry_node):
+
+    print entry_node.ident()
+    for ent in entry_node.entries:
+        val = ''
+        for v in ent.vectors:
+            val = "%s %s" % (val, v.domain)
+        if len(ent.vectors) != 0:
+            key = ent.vectors[0].domain
+            rediscli.set(key, val)
 
 def entropy(string):
     "Calculates the Shannon entropy of a string"
