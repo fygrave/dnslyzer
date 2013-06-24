@@ -57,6 +57,7 @@ def indcallback(ch, method, properties, body):
     root.trickle(v)
     try:
         print root
+        dump_clusters(root)
         # sync to redis
     except:
         pass
