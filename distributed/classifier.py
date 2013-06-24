@@ -51,7 +51,7 @@ amqpexchange = config.get("amqp", "packetex")
 amqpchann.exchange_declare(exchange=amqpexchange, type='fanout')
 
 
-amqpchann.queue_declare(queue='classify', autodelete = True)
+amqpchann.queue_declare(queue='classify', auto_delete = True)
 amqpchann.queue_bind(exchange = amqpexchange, queue='classify')
 
 amqpchann.basic_consume(indcallback, queue='classify', no_ack = True)
