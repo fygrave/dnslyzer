@@ -52,6 +52,7 @@ class WhoisServer(SocketServer.BaseRequestHandler ):
             if queries % 10 == 0:
                 syslog.syslog(syslog.LOG_INFO, self.client_address[0] + ' made ' + str(queries) + ' queries.')
             self.request.send(response + '\n\n')
+            self.request.close()
 
 
 
