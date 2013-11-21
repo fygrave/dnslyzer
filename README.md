@@ -17,7 +17,7 @@ a historical interest.
 
 DNS logger is a patched version of dnslogger.
 
-Running Passive DNS and DNS analzer
+Running Passive DNS and DNS analyzer
 ===================================
 You need RabbitMQ, redis, ElasticSearch installed on the machine.
 
@@ -27,16 +27,16 @@ if you don't want data in elasticsearch, don't run redis collector.
 run dns-traffic sniffers on your agents as:
 
 create configuration file. dnscollect.cfg
-
+```
  [main]
  dnsport = 325
  [amqp]
  host = 1.2.3.4
  port = 5672
  packetex = dnspacket
-
+```
 this is config file for supervisord to run pdns components:
-
+```
 [program:dnsredis]
 directory = /pdns/redis-conf
 command = redis-server redis.conf
@@ -71,22 +71,23 @@ directory = /pdns/dnslyzer/distributed
 command = python esworker.py
 autorestart = true
 autostart = true
-
+```
 Data format in Redis
 ====================
 
-all clusters are stored as $clusterid$rcode sets (domain)
-all domains are stored as @domain sets (  <type>:data:rcode)
-all data is stored as &data sets (domain)
-counts stored as domain:data -> count
-first seen timestamp is stored  as dom;res;rcode -> timestamp ( * 86400)
-last seen timestamp is stored as dom|res|rcode -> timestamp (* 86400)
+- all clusters are stored as $clusterid$rcode sets (domain)
+- all domains are stored as @domain sets (  <type>:data:rcode)
+- all data is stored as &data sets (domain)
+- counts stored as domain:data -> count
+- first seen timestamp is stored  as dom;res;rcode -> timestamp ( * 86400)
+- last seen timestamp is stored as dom|res|rcode -> timestamp ( * 86400)
 
-
-we can provide fast query by cluserid/rcode
-we can provide fast query by domain
-we can provide query by ip
-we will return count, last seen, first seen for domain.
+Fast queries:
+=============
+- we can provide fast query by cluserid/rcode
+- we can provide fast query by domain
+- we can provide query by ip
+- we will return count, last seen, first seen for domain.
 
 
 
