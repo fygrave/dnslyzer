@@ -22,7 +22,7 @@ syslog.openlog('Whois_Queries', syslog.LOG_PID, syslog.LOG_USER)
 redis_db = int(config.get('whois_server','redis_db'))
 host = config.get('whois_server','listen')
 redis_host = config.get('whois_server','redis_host')
-redis_port = config.get('whois_server','redis_port')
+redis_port = int(config.get('whois_server','redis_port'))
 port = int(config.get('whois_server','port_query'))
 
 import SocketServer
