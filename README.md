@@ -71,6 +71,14 @@ directory = /pdns/dnslyzer/distributed
 command = python esworker.py
 autorestart = true
 autostart = true
+
+
+[program:whois]
+directory = /pdns/dnslyzer/distributed
+command = python whoisrv.py
+autorestart = true
+autostart = true
+
 ```
 Data format in Redis
 ====================
