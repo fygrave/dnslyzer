@@ -22,8 +22,9 @@ def get_date():
 
 
 def get_index():
-    d = datetime.datetime.now()
-    return "dnsindex_%0.2i%0.4i" % (d.month, d.year)
+    #d = datetime.datetime.now()
+    #return "dnsindex_%0.2i%0.4i" % (d.month, d.year)
+    return "pdns"
 
 
 
@@ -33,9 +34,10 @@ def indcallback(ch, method, properties, body):
         esconn.create_index(get_index())
 
         mapping = {
-               u'qname': {'boost': 1.0,
+               u'rtype': {'boost': 1.0,
                      'index': 'not_analyzed',
                      'store': 'yes',
+                     'analyzer': 'whitespace',
                      'type': u'string',
                      "term_vector" : "with_positions_offsets"},
                u'rcode': {'boost': 1.0,

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import logging
+import time
 import dnslib
 import base64
 import ConfigParser as CFG
@@ -69,20 +70,31 @@ def entropy(string):
 
     return round(entropy)
 
-
+def redisUpdate(dom, dat, cluster, rtype, rcode, skey, lkey):
+    timestamp = int(int(time.time())/86400) # care for day only
+    rediscl.sadd("@%s"%dom, "%s:%s:%s" %(rtype, dat, rcode))
+    if dat != '_':
+        rediscl.sadd("&%s"%dat, "%s:%s" % (rtype, dom))
+    rediscl.sadd("$%s$%s"% (cluster, rcode), dom)
+    rediscl.incr("%s:%s"% (dom, dat))
+    rediscl.set(lkey, timestamp)
+    if not rediscl.exists(skey):
+        rediscl.set(skey,timestamp)
+    return 0
 
 def indcallback(ch, method, properties, body):
+
     global rediscl
-    logger = logging.getLogger()
-    logger.info("got dnspack")
     pack = json.loads(body)
     pack["cluster"] = cluster_id(pack["qname"])
     if pack["rcode"] != 0:
-        key =  "%s:%s:_:%s" %(pack["qname"], pack["cluster"], pack["rcode"])
-        rediscl.incr(key)
+        skey =  "%s;_;%s" %(pack["qname"],  pack["rcode"])
+        lkey =  "%s|_|%s" %(pack["qname"],  pack["rcode"])
+        redisUpdate(pack["qname"], "_", pack["cluster"], pack["rtype"], pack["rcode"], skey, lkey)
     else:
-        key =  "%s:%s:%s:%s" %(pack["qname"], pack["cluster"], pack["response"], pack["rcode"])
-        rediscl.incr(key)
+        skey =  "%s;%s;%s" %(pack["qname"], pack["response"], pack["rcode"])
+        lkey =  "%s|%s|%s" %(pack["qname"],  pack["response"], pack["rcode"])
+        redisUpdate(pack["qname"], pack["response"], pack["cluster"], pack["rtype"], pack["rcode"], skey, lkey)
 
 
 
@@ -96,7 +108,7 @@ amqpexchange = config.get("amqp", "packetex")
 amqpchann.exchange_declare(exchange=amqpexchange, type='fanout')
 rediscl = redis.Redis(host = config.get("main","redishost"), port = int(config.get("main", "redisport")))
 
-
+logger = logging.getLogger()
 amqpchann.queue_declare(queue='redis')
 amqpchann.queue_bind(exchange = amqpexchange, queue='redis')
 
