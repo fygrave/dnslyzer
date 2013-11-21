@@ -27,12 +27,13 @@ if you don't want data in elasticsearch, don't run redis collector.
 run dns-traffic sniffers on your agents as:
 
 create configuration file. dnscollect.cfg
-[main]
-dnsport = 325
-[amqp]
-host = 1.2.3.4
-port = 5672
-packetex = dnspacket
+
+ [main]
+ dnsport = 325
+ [amqp]
+ host = 1.2.3.4
+ port = 5672
+ packetex = dnspacket
 
 this is config file for supervisord to run pdns components:
 
