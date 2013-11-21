@@ -13,7 +13,7 @@ class WhoisQuery():
         self.redis_whois_server = redis.Redis(host= host, port = port)
 
     def list_to_str(self, l):
-        return reduce(lambda x, y: "%s %s"%(x,y), l)
+        return reduce(lambda x, y: "%s\n%s"%(x,y), l)
     def whois_host(self, query):
         to_return = self.list_to_str(self.redis_whois_server.smembers("@%s"%query))
         if to_return is None:
