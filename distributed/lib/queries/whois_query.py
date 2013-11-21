@@ -65,8 +65,8 @@ class WhoisQuery():
     def whois_ip(self, ip):
         ip = IPy.IP(ip)
         print ip
-        to_return = self.list_to_str(self.redis_whois_server.smembers("&%s"%ip))
-        if not key:
+        to_return = self.list_to_str(self.redis_whois_server.smembers("&%s"%str(ip)))
+        if not to_return:
             to_return += 'IP ' + str(ip) + ' not found.\n'
         #else:
         #    to_return += self.get_all_informations(key)
