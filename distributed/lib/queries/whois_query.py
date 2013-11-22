@@ -18,7 +18,7 @@ class WhoisQuery():
     def list_to_str(self, dom,  l):
         if len(l) == 0:
             return None
-        return reduce(lambda x, y: "%s\n%s"%(x,y), map(self.printable_entry, map(lambda x: (dom, x), l)))
+        return reduce(lambda x, y: "%s\r\n\r\n%s"%(x,y), map(self.printable_entry, map(lambda x: (dom, x), l)))
 
     def printable_entry(self,  v):
         dom = v[0]
@@ -51,11 +51,12 @@ class WhoisQuery():
             print e
             print "%s rdata: %s skey: %s lkey: %s ckey: %s" % (r["rrname"], r["rdata"], skey, lkey, ckey)
             # default if keys not found
-            r["time_first"] = datetime.datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d 00:00:00")
-            r["time_last"] = datetime.datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d 00:00:00")
-            r["count"] = 1
+            return ""
+            #r["time_first"] = datetime.datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d 00:00:00")
+            #r["time_last"] = datetime.datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d 00:00:00")
+            #r["count"] = 1
 
-        return json.dumps(r)
+        return json.dumps(r, sort_keys = True, indent=4, separators=(',', ': '))
 
     def whois_host(self, query):
         to_return = self.list_to_str(query, self.redis_whois_server.smembers("@%s"%query))
