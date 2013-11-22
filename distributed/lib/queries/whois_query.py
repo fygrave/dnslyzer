@@ -45,8 +45,8 @@ class WhoisQuery():
             r["rdata"] = dom
         r["rrtype"] = rtype
         try:
-            r["time_first"] =  datetime.datetime.fromtimestamp(int(self.redis_whois_server.get(skey))).strftime("%Y-%m-%d 00:00:00")
-            r["time_last"] = datetime.datetime.fromtimestamp(int(self.redis_whois_server.get(lkey))).strftime("%Y-%m-%d 00:00:00")
+            r["time_first"] =  datetime.datetime.fromtimestamp(int(self.redis_whois_server.get(skey))).strftime("%Y-%m-%d %H:%M:%S")
+            r["time_last"] = datetime.datetime.fromtimestamp(int(self.redis_whois_server.get(lkey))).strftime("%Y-%m-%d %H:%M:%S")
             r["count"] = self.redis_whois_server.get(ckey)
         except Exception, e:
             print e
