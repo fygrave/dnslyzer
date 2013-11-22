@@ -17,7 +17,9 @@ class WhoisQuery():
             return None
         return reduce(lambda x, y: "%s\n%s"%(x,y), map(self.printable_entry, map(lambda x: (dom, x), l)))
 
-    def printable_entry(self, dom, val):
+    def printable_entry(self,  v):
+        dom = v[0]
+        val = v[1]
         d = val.split(':')
         rtype = 'A'
         skey = ''
