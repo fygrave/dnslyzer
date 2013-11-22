@@ -6,6 +6,8 @@ import redis
 import IPy
 import re
 import datetime
+import time
+import json
 
 class WhoisQuery():
 
@@ -41,9 +43,18 @@ class WhoisQuery():
             r["rrname"] = d[0]
             r["rdata"] = dom
         r["rrtype"] = rtype
-        r["time_first"] =  datetime.datetime.fromtimestamp(self.redis_whois_server.get(skey) * 84600 + 84600).strftime("%Y-%m-%d 00:00:00")
-        r["time_last"] = datetime.datetime.fromtimestamp(self.redis_whois_server.get(lkey) * 84600 + 84600).strftime("%Y-%m-%d 00:00:00")
-        count = self.redis_whois_server.get(ckey)
+        try:
+            r["time_first"] =  datetime.datetime.fromtimestamp(int(self.redis_whois_server.get(skey)) * 84600 + 84600).strftime("%Y-%m-%d 00:00:00")
+            r["time_last"] = datetime.datetime.fromtimestamp(int(self.redis_whois_server.get(lkey)) * 84600 + 84600).strftime("%Y-%m-%d 00:00:00")
+            r["count"] = self.redis_whois_server.get(ckey)
+        except Exception, e:
+            print e
+            print "%s rdata: %s skey: %s lkey: %s ckey: %s" % (r["rrname"], r["rdata"], skey, lkey, ckey)
+            # default if keys not found
+            r["time_first"] = datetime.datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d 00:00:00")
+            r["time_last"] = datetime.datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d 00:00:00")
+            r["count"] = 1
+
         return json.dumps(r)
 
     def whois_host(self, query):

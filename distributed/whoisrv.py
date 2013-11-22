@@ -56,5 +56,6 @@ class WhoisServer(SocketServer.BaseRequestHandler ):
 
 
 
+SocketServer.ThreadingTCPServer.allow_reuse_address = True
 server = SocketServer.ThreadingTCPServer((host, port), WhoisServer)
 server.serve_forever()
