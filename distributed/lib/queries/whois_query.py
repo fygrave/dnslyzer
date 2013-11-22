@@ -69,7 +69,7 @@ class WhoisQuery():
         print ip
         to_return = self.list_to_str(self.redis_whois_server.smembers("&%s"%str(ip)))
         if not to_return:
-            to_return += 'IP ' + str(ip) + ' not found.\n'
+            to_return = 'IP ' + str(ip) + ' not found.\n'
         #else:
         #    to_return += self.get_all_informations(key)
         return to_return
