@@ -71,7 +71,7 @@ def entropy(string):
     return round(entropy)
 
 def redisUpdate(dom, dat, cluster, rtype, rcode, skey, lkey):
-    timestamp = int(int(time.time())/86400) # care for day only
+    timestamp = int(int(time.time())) # care for day only
     rediscl.sadd("@%s"%dom, "%s:%s:%s" %(rtype, dat, rcode))
     if dat != '_':
         rediscl.sadd("&%s"%dat, "%s:%s" % (rtype, dom))
