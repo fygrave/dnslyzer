@@ -28,12 +28,12 @@ class WhoisQuery():
         ckey = ''
         r = {}
         if len(d) == 3: # host
-            rtype = d.pop()
-            skey = "%s;%s;%s" % (dom, d[0], d[1])
-            lkey = "%s|%s|%s" % (dom, d[0],d[1])
-            ckey = "%s:%s" % (dom, d[0])
+            rtype = d[0]
+            skey = "%s;%s;%s" % (dom, d[1], d[2])
+            lkey = "%s|%s|%s" % (dom, d[1],d[2])
+            ckey = "%s:%s" % (dom, d[1])
             r["rrname"] = dom
-            r["rdata"] = d[0]
+            r["rdata"] = d[2]
         else:
             skey = "%s;%s;%s" % (d[0],dom, d[1])
             lkey = "%s|%s|%s" % (d[0],dom,d[1])
