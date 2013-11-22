@@ -12,62 +12,49 @@ class WhoisQuery():
     def __init__(self,  host, port):
         self.redis_whois_server = redis.Redis(host= host, port = port)
 
-    def list_to_str(self, l):
+    def list_to_str(self, dom,  l):
         if len(l) == 0:
             return None
-        return reduce(lambda x, y: "%s\n%s"%(x,y), l)
+        return reduce(lambda x, y: "%s\n%s"%(x,y), map(self.printable_entry, map(lambda x: (dom, x), l)))
+
+    def printable_entry(self, dom, val):
+        d = val.split(':')
+        rtype = 'A'
+        skey = ''
+        lkey = ''
+        ckey = ''
+        r = {}
+        if len(d) == 3: # host
+            rtype = d.pop()
+            skey = "%s;%s;%s" % (dom, d[0], d[1])
+            lkey = "%s|%s|%s" % (dom, d[0],d[1])
+            ckey = "%s:%s" % (dom, d[0])
+            r["rrname"] = dom
+            r["rdata"] = d[0]
+        else:
+            skey = "%s;%s;%s" % (d[0],dom, d[1])
+            lkey = "%s|%s|%s" % (d[0],dom,d[1])
+            ckey = "%s:%s" % (d[0], dom)
+            r["rrname"] = d[0]
+            r["rdata"] = dom
+        r["rrtype"] = rtype
+        r["time_first"] =  datetime.datetime.fromtimestamp(self.redis_whois_server.get(skey) * 84600 + 84600).strftime("%Y-%m-%d 00:00:00")
+        r["time_last"] = datetime.datetime.fromtimestamp(self.redis_whois_server.get(lkey) * 84600 + 84600).strftime("%Y-%m-%d 00:00:00")
+        count = self.redis_whois_server.get(ckey)
+        return json.dumps(r)
+
     def whois_host(self, query):
-        to_return = self.list_to_str(self.redis_whois_server.smembers("@%s"%query))
+        to_return = self.list_to_str(query, self.redis_whois_server.smembers("@%s"%query))
         if to_return is None:
             to_return = 'Host not found.\n'
         #else:
         #    to_return += self.get_all_informations(query)
         return to_return
 
-    def __find_best_range(self, ip):
-        to_return = None
-        ranges = None
-        key = str(ip)
-        if self.ipv4 :
-            regex = '.*[.]'
-        else:
-            regex = '.*[:]'
-        while not ranges:
-            key = re.findall(regex, key)
-            if len(key) != 0:
-               key = key[0][:-1]
-            else:
-                break
-            ranges = self.redis_whois_server.smembers(self.prepend + key)
-        best_range = None
-        for range in ranges:
-            splitted = range.split('_')
-            ip_int = ip.int()
-            if int(splitted[0]) <= ip_int and int(splitted[1]) >= ip_int:
-                if best_range is not None:
-                    br_splitted = best_range.split('_')
-                    if int(splitted[0]) > int(br_splitted[0]) and int(splitted[1]) < int( br_splitted[1]):
-                        best_range = range
-                else:
-                    best_range = range
-        if best_range is not None:
-            to_return = self.redis_whois_server.get(best_range)
-        return to_return
-
-    def get_all_informations(self, key):
-        to_return = ''
-        for subkey in self.subkeys:
-            list = self.redis_whois_server.smembers(key + subkey)
-            for element in list:
-                value = self.redis_whois_server.get(element)
-                if value is not None:
-                    to_return += '\n' + value
-        return to_return
-
     def whois_ip(self, ip):
         ip = IPy.IP(ip)
         print ip
-        to_return = self.list_to_str(self.redis_whois_server.smembers("&%s"%str(ip)))
+        to_return = self.list_to_str(query, self.redis_whois_server.smembers("&%s"%str(ip)))
         if not to_return:
             to_return = 'IP ' + str(ip) + ' not found.\n'
         #else:
