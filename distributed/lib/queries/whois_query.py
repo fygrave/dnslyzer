@@ -37,10 +37,11 @@ class WhoisQuery():
             r["rrname"] = dom
             r["rdata"] = d[2]
         else:
-            skey = "%s;%s;%s" % (d[0],dom, d[1])
-            lkey = "%s|%s|%s" % (d[0],dom,d[1])
-            ckey = "%s:%s" % (d[0], dom)
-            r["rrname"] = d[0]
+            skey = "%s;%s;%s" % (d[1],dom,"0")
+            lkey = "%s|%s|%s" % (d[1],dom,"0")
+            ckey = "%s:%s" % (d[1], dom)
+            r["rrname"] = d[1]
+            r["rrtype"] = d[0]
             r["rdata"] = dom
         r["rrtype"] = rtype
         try:
