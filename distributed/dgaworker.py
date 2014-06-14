@@ -2,9 +2,11 @@
 
 import logging
 import time
+import tldextract
 import dnslib
 import base64
 import ConfigParser as CFG
+import redis
 
 import pika
 import datetime
@@ -30,9 +32,9 @@ def cluster_id(domain_label):
     return c
 
 def should_ignore(name):
-    ign = [".Dlink", ".local", "yotaaccessinterface", ".mail-abuse.org", ".dnsbl.void.ru", ".relays.visi.com", ".spamhaus", ".blitzed.org", "csplc.org", "njabl.org", "userapi.com", "dsbl.org", ".barracudacentral", ".dnsbl."]
+    ign = ["amazon", "vk.me","yahoo.com", "vk.com", "yahoodns", "google.com", ".dlink", ".local", "yotaaccessinterface", ".mail-abuse.org", ".dnsbl.void.ru", ".relays.visi.com", ".spamhaus", ".blitzed.org", "csplc.org", "njabl.org", "userapi.com", "dsbl.org", ".barracudacentral", ".dnsbl.", "akamai", "lxdns", "kenetic", "keenetic", "cloudfront", "dnw.bz", "in-addr", "g0v.tw", "nlink","m6r.eu"]
     for f in ign:
-        if name.find(f) != -1:
+        if name.lower().find(f) != -1:
             return True
 
     return False
@@ -59,12 +61,17 @@ def charset(s):
 
     return c
 
-def score(line):
-    if line[len(line) - 1] != '.':
-        line = "%s." % line
+def dscore(line):
+    if len(line) < 5:
+        return 0
+    dom = tldextract.extract(line)
+    line = "%s.%s." % (dom.domain, dom.suffix)
+
     score = dgascore.score_for_string(line)
-    perp = dgascore.perplexity_for_string(line)
-        
+
+    #perp = dgascore.perplexity_for_string(line)
+    return score
+
 def entropy(string):
     "Calculates the Shannon entropy of a string"
 
@@ -91,14 +98,21 @@ def redisUpdate(dom, dat, cluster, rtype, rcode, skey, lkey):
 def indcallback(ch, method, properties, body):
 
     global rediscl
-    pack = json.loads(body)
-    pack["cluster"] = cluster_id(pack["qname"])
-    score = score(pack["qname"])
-    if (score > 1):
-        if pack["rcode"] != 0:
-            print "%s s:%s rc: %s cluster: %s" % (pack["qname"], score, pack["rcode"], pack["cluster"])
-        else:
-            print "%s s:%s rc: %s r: %s cluster: %s" % (pack["qname"], score, pack["rcode"], pack["response"], pack["cluster"])
+    try:
+        pack = json.loads(body)
+        if should_ignore(pack["qname"]):
+            return
+        pack["cluster"] = cluster_id(pack["qname"])
+        score = dscore(pack["qname"])
+        if (score > 90):
+            if pack["rcode"] != 0:
+                print "%s s:%s rc: %s cluster: %s" % (pack["qname"], score, pack["rcode"], pack["cluster"])
+                rediscl.sadd("c:%s"%pack["cluster"], pack["qname"])
+            else:
+                print "%s s:%s rc: %s r: %s cluster: %s" % (pack["qname"], score, pack["rcode"], pack["response"], pack["cluster"])
+                rediscl.sadd("i:%s"% pack["response"], pack["qname"])
+    except Exception, e:
+        print e
 
 
 config = CFG.ConfigParser()
@@ -108,11 +122,12 @@ amqpconn = pika.BlockingConnection(pika.ConnectionParameters(config.get("amqp", 
 amqpchann = amqpconn.channel()
 amqpexchange = config.get("amqp", "packetex")
 amqpchann.exchange_declare(exchange=amqpexchange, type='fanout')
-rediscl = redis.Redis(host = config.get("main","redishost"), port = int(config.get("main", "redisport")))
+
 
 logger = logging.getLogger()
-amqpchann.queue_declare(queue='redis')
-amqpchann.queue_bind(exchange = amqpexchange, queue='redis')
+amqpchann.queue_declare(queue='dga')
+amqpchann.queue_bind(exchange = amqpexchange, queue='dga')
+rediscl = redis.Redis(host = config.get("main","redishost"), port = int(config.get("main", "redisport")))
 
-amqpchann.basic_consume(indcallback, queue='redis', no_ack = True)
+amqpchann.basic_consume(indcallback, queue='dga', no_ack = True)
 amqpchann.start_consuming()
