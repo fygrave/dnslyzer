@@ -8,6 +8,7 @@ import sys
 import json
 import numpy
 import numpy as np
+
 class DGAScore:
   NSIZ = 5
   NGRAMS_FILE = '/tmp/ngrams.pickle'
@@ -138,13 +139,14 @@ class DGAScore:
     sum = max(0.0, sum)
     return sum
       
- 
-dgascore = DGAScore()
+if __name__ == "__main__": 
+  dgascore = DGAScore()
 
-for line in open(sys.argv[1]).readlines():
-  line = line.rstrip('\n')
-  if line[len(line) - 1] != '.':
-    line = "%s." % line
-    score = dgascore.score_for_string(line)
-    perp = dgascore.perplexity_for_string(line)
-    print "%s score: %f perp: %s" % (line, score, perp)
+  for line in open(sys.argv[1]).readlines():
+    line = line.rstrip('\n')
+    if line[len(line) - 1] != '.':
+      line = "%s." % line
+      score = dgascore.score_for_string(line)
+      perp = dgascore.perplexity_for_string(line)
+
+      print "%s score: %f perp: %s" % (line, score, perp)
