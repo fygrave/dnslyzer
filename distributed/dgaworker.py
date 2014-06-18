@@ -7,6 +7,7 @@ import dnslib
 import base64
 import ConfigParser as CFG
 import redis
+import numpy as np
 
 import pika
 import datetime
@@ -32,7 +33,7 @@ def cluster_id(domain_label):
     return c
 
 def should_ignore(name):
-    ign = ["amazon", "vk.me","yahoo.com", "vk.com", "yahoodns", "google.com", ".dlink", ".local", "yotaaccessinterface", ".mail-abuse.org", ".dnsbl.void.ru", ".relays.visi.com", ".spamhaus", ".blitzed.org", "csplc.org", "njabl.org", "userapi.com", "dsbl.org", ".barracudacentral", ".dnsbl.", "akamai", "lxdns", "kenetic", "keenetic", "cloudfront", "dnw.bz", "in-addr", "g0v.tw", "nlink","m6r.eu"]
+    ign = ["amazon", "vk.me","yahoo.com", "vk.com", "yahoodns", "google.com", ".dlink", ".local", "yotaaccessinterface", ".mail-abuse.org", ".dnsbl.void.ru", ".relays.visi.com", ".spamhaus", ".blitzed.org", "csplc.org", "njabl.org", "userapi.com", "dsbl.org", ".barracudacentral", ".dnsbl.", "akamai", "lxdns", "kenetic", "keenetic", "cloudfront", "dnw.bz", "in-addr", "g0v.tw", "nlink","m6r.eu", "am15.net", "xn--"]
     for f in ign:
         if name.lower().find(f) != -1:
             return True
@@ -89,27 +90,49 @@ def redisUpdate(dom, dat, cluster, rtype, rcode, skey, lkey):
     if dat != '_':
         rediscl.sadd("&%s"%dat, "%s:%s" % (rtype, dom))
     rediscl.sadd("$%s$%s"% (cluster, rcode), dom)
+    rediscl.rpush("&%s$%s"% (cluster), int(time.time()))
     rediscl.incr("%s:%s"% (dom, dat))
     rediscl.set(lkey, timestamp)
     if not rediscl.exists(skey):
         rediscl.set(skey,timestamp)
     return 0
 
+def calc_entropy(x):
+    return np.log2(np.max(x))*np.sum(x * np.log2(x+0.000001))
+    #return np.sum(-x * np.log2(x + 0.1))
+
+def calc_period(arr):
+    if len(arr) <2:
+        return 100 # low periodicy/high score
+    a = np.array(arr, dtype='i4')
+    df = np.diff(a)
+# to clarify
+    #p = 1 - calc_entropy(df)/np.sum(df)/len(df)
+    p =  calc_entropy(df)/np.sum(df)/len(df)/len(df)
+    return p
+
 def indcallback(ch, method, properties, body):
 
     global rediscl
     try:
         pack = json.loads(body)
+        if pack["rtype"] != "A":
+            return
         if should_ignore(pack["qname"]):
             return
         pack["cluster"] = cluster_id(pack["qname"])
         score = dscore(pack["qname"])
+        rediscl.rpush("t:%s"% (pack["cluster"]), int(time.time()))
+        #rediscl.expire("t:%s" % (pack["cluster"]), 600)
+        if rediscl.llen("t:%s"% (pack["cluster"])) > 20: # max - keep 20 timestamps
+            rediscl.lpop("t:%s"% (pack["cluster"]))
+        pscore = calc_period(rediscl.lrange("t:%s" % pack["cluster"], 0, -1))
         if (score > 90):
             if pack["rcode"] != 0:
-                print "%s s:%s rc: %s cluster: %s" % (pack["qname"], score, pack["rcode"], pack["cluster"])
+                print "%s s:%s rc: %s p: %s cluster: %s" % (pack["qname"], score, pack["rcode"], pscore, pack["cluster"])
                 rediscl.sadd("c:%s"%pack["cluster"], pack["qname"])
             else:
-                print "%s s:%s rc: %s r: %s cluster: %s" % (pack["qname"], score, pack["rcode"], pack["response"], pack["cluster"])
+                print "%s s:%s rc: %s r: %s p: %s cluster: %s" % (pack["qname"], score, pack["rcode"], pack["response"], pscore, pack["cluster"])
                 rediscl.sadd("i:%s"% pack["response"], pack["qname"])
     except Exception, e:
         print e
