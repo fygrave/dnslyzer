@@ -1,0 +1,160 @@
+% Created 2014-06-19 Thu 17:51
+\documentclass[a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{fixltx2e}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{float}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{textcomp}
+\usepackage{marvosym}
+\usepackage{wasysym}
+\usepackage{amssymb}
+\usepackage{hyperref}
+\tolerance=1000
+\usepackage{color}
+\usepackage{listings}
+\hypersetup{
+colorlinks,%
+citecolor=black,%
+filecolor=black,%
+linkcolor=blue,%
+urlcolor=black
+}
+\author{Fyodor Yarochkin, V.B. Kropotov, Vitaly Chetvertakov}
+\date{\today}
+\title{PDNS -  API specification}
+\hypersetup{
+  pdfkeywords={},
+  pdfsubject={},
+  pdfcreator={Emacs 24.3.50.1 (Org mode 8.2.6)}}
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+
+\section{Revision History}
+\label{sec-1}
+\subsection{Change Record}
+\label{sec-1-1}
+\begin{center}
+\begin{tabular}{r|l|l|l}
+\hline
+Version & Date & Name & Revision Description\\
+\hline
+2.1 & \textit{<2014-03-11 Wed>} & Fyodor & initial revision.\\
+\hline
+\end{tabular}
+\end{center}
+
+\section{Introduction}
+\label{sec-2}
+PDNS is a system that indexes DNS queries data and performs some
+DNS-based detection/classification of DNS content.
+
+This document describes API of the system.
+\section{Authentication}
+\label{sec-3}
+API is provided over HTTPs link at <pdns> url.
+Each system user should access system using API key which is passed to
+PDNS platform as additional HTTP POST or HTTP GET parameter.
+
+\section{Query API}
+\label{sec-4}
+PDNS platform allows to query different types of data. Following are
+the API endpoints that could be used to query variety of data
+collected by PDNS platform:
+
+\subsection{Query last detected domains/IPs}
+\label{sec-4-1}
+This query will return list of last domains, which were observed
+ within last 60 seconds by DGA platform.
+ Each domain entry will have source, DGA score, periodicity
+score and query response.
+
+The each of the entry in this list has 60 second TTL, after which the
+entry will expire (and be deleted).
+
+Each of the elements is deleted after query.
+
+Query format:
+\lstset{language=HTML,label= ,caption= ,numbers=none}
+\begin{lstlisting}
+POST /api/v1/lookup/last[/<query>]
+   apikey=[apikey]
+
+--optional--parameters
+   callback_url=[url]
+   score=<not less than score>
+   ttl=<not older than ttl>
+\end{lstlisting}
+
+
+\subsection{Query clusters}
+\label{sec-4-2}
+This query returns array of clusters and detected suspicious domain
+names.
+\lstset{language=HTML,label= ,caption= ,numbers=none}
+\begin{lstlisting}
+POST /api/v1/lookup/clusters/[/<domain>]
+   apikey=[apikey]
+
+--optional--parameters
+   callback_url=[url]
+   score=<not less than score>
+   ttl=<not older than ttl>
+\end{lstlisting}
+
+if query is specified, only clusters matching given <domain> name will
+be returned.
+
+\subsection{PDNS query}
+\label{sec-4-3}
+these queries support API similar to \url{https://api.dnsdb.info/}.
+
+\subsubsection{rrset queries}
+\label{sec-4-3-1}
+\lstset{language=HTML,label= ,caption= ,numbers=none}
+\begin{lstlisting}
+POST /api/v1/lookup/rrset/name/OWNER_NAME/<RRTYPE>/<BAILIWICK>/
+   apikey=[apikey]
+
+--optional--parameters
+   callback_url=[url]
+   score=<not less than score>
+   ttl=<not older than ttl>
+\end{lstlisting}
+
+\subsubsection{rdata queries}
+\label{sec-4-3-2}
+\lstset{language=HTML,label= ,caption= ,numbers=none}
+\begin{lstlisting}
+POST /api/v1/lookup/rdata/TYPE/VALUE/<RRTYPE>/
+   apikey=[apikey]
+
+--optional--parameters
+   callback_url=[url]
+   score=<not less than score>
+   ttl=<not older than ttl>
+\end{lstlisting}
+
+\section{Interpreting Results}
+\label{sec-5}
+
+Results are given in JSON format. TBD
+
+\section{Sample usage}
+\label{sec-6}
+
+\lstset{language=sh,label= ,caption= ,numbers=none}
+\begin{lstlisting}
+#!/bin/sh
+curl --insecure --data "api_key=key&score=0.2" https://pdnsmachine.org/api/v1/check_last
+\end{lstlisting}
+% Emacs 24.3.50.1 (Org mode 8.2.6)
+\end{document}

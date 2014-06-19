@@ -1,0 +1,128 @@
+#+TITLE: PDNS -  API specification
+#+author: Fyodor Yarochkin, V.B. Kropotov, Vitaly Chetvertakov
+#+LANGUAGE: en
+#+LATEX_CLASS: article
+#+LATEX_CLASS_OPTIONS: [a4paper]
+#+LATEX_HEADER: \hypersetup{
+#+LATEX_HEADER:     colorlinks,%
+#+LATEX_HEADER:     citecolor=black,%
+#+LATEX_HEADER:     filecolor=black,%
+#+LATEX_HEADER:     linkcolor=blue,%
+#+LATEX_HEADER:     urlcolor=black
+#+LATEX_HEADER: }
+#+OPTIONS:    H:3  toc:t \n:nil ::t |:t ^:t -:t f:t *:t tex:t d:(HIDE) tags:not-in-toc
+#+INFOJS_OPT: view:nil toc:nil ltoc:t mouse:underline buttons:0 path:http://orgmode.org/org-info.js
+
+* Revision History
+** Change Record
+|---------+------------------+--------+----------------------|
+| Version | Date             | Name   | Revision Description |
+|---------+------------------+--------+----------------------|
+| /       | <                | <      | <                    |
+| 2.1     | <2014-03-11 Wed> | Fyodor | initial revision.    |
+|---------+------------------+--------+----------------------|
+
+* Introduction
+PDNS is a system that indexes DNS queries data and performs some
+DNS-based detection/classification of DNS content.
+
+This document describes API of the system.
+* Authentication
+API is provided over HTTPs link at <pdns> url.
+Each system user should access system using API key which is passed to
+PDNS platform as additional HTTP POST or HTTP GET parameter.
+
+* Query API
+PDNS platform allows to query different types of data. Following are
+the API endpoints that could be used to query variety of data
+collected by PDNS platform:
+
+** Query last detected domains/IPs
+This query will return list of last domains, which were observed
+ within last 60 seconds by DGA platform.
+ Each domain entry will have source, DGA score, periodicity
+score and query response.
+
+The each of the entry in this list has 60 second TTL, after which the
+entry will expire (and be deleted).
+
+Each of the elements is deleted after query.
+
+Query format:
+#+BEGIN_SRC html
+
+
+POST /api/v1/lookup/last[/<query>]
+   apikey=[apikey]
+  
+--optional--parameters
+   callback_url=[url]
+   score=<not less than score>
+   ttl=<not older than ttl>
+
+#+END_SRC
+
+
+** Query clusters
+This query returns array of clusters and detected suspicious domain
+names.
+#+BEGIN_SRC html
+
+
+POST /api/v1/lookup/clusters/[/<domain>]
+   apikey=[apikey]
+  
+--optional--parameters
+   callback_url=[url]
+   score=<not less than score>
+   ttl=<not older than ttl>
+
+#+END_SRC
+
+if query is specified, only clusters matching given <domain> name will
+be returned.
+
+** PDNS query
+these queries support API similar to https://api.dnsdb.info/.
+
+*** rrset queries
+#+BEGIN_SRC html
+
+
+POST /api/v1/lookup/rrset/name/OWNER_NAME/<RRTYPE>/<BAILIWICK>/
+   apikey=[apikey]
+  
+--optional--parameters
+   callback_url=[url]
+   score=<not less than score>
+   ttl=<not older than ttl>
+
+#+END_SRC
+
+*** rdata queries
+#+BEGIN_SRC html
+
+
+POST /api/v1/lookup/rdata/TYPE/VALUE/<RRTYPE>/
+   apikey=[apikey]
+  
+--optional--parameters
+   callback_url=[url]
+   score=<not less than score>
+   ttl=<not older than ttl>
+
+#+END_SRC
+
+* Interpreting Results
+
+Results are given in JSON format. TBD
+
+* Sample usage
+
+#+BEGIN_SRC sh
+
+#!/bin/sh
+curl --insecure --data "api_key=key&score=0.2"
+ https://pdnsmachine.org/api/v1/lookup/last
+
+#+END_SRC

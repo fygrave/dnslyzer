@@ -8,6 +8,7 @@ import base64
 import ConfigParser as CFG
 import redis
 import numpy as np
+import zmq
 
 import pika
 import datetime
