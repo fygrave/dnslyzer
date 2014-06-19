@@ -98,17 +98,22 @@ def redisUpdate(dom, dat, cluster, rtype, rcode, skey, lkey):
     return 0
 
 def calc_entropy(x):
-    return np.log2(np.max(x))*np.sum(x * np.log2(x+0.000001))
+    #count, bins = np.histogram(x)
+    count = x
+    p = count/float(np.sum(count))
+    return (-np.sum(np.compress(p != 0, p*(np.log(p)))))
+    #return np.log2(np.max(x))*np.sum(x * np.log2(x+0.000001))
     #return np.sum(-x * np.log2(x + 0.1))
 
 def calc_period(arr):
-    if len(arr) <2:
-        return 100 # low periodicy/high score
+    if len(arr) <20:
+        return 1.0 # low periodicy/high score
     a = np.array(arr, dtype='i4')
     df = np.diff(a)
 # to clarify
     #p = 1 - calc_entropy(df)/np.sum(df)/len(df)
-    p =  calc_entropy(df)/np.sum(df)/len(df)/len(df)
+    #p =  calc_entropy(df)/np.sum(df)/len(df)/len(df)
+    p =  1-(10 *calc_entropy(df)/np.log(np.exp(len(df))))
     return p
 
 def indcallback(ch, method, properties, body):
@@ -124,10 +129,10 @@ def indcallback(ch, method, properties, body):
         score = dscore(pack["qname"])
         rediscl.rpush("t:%s"% (pack["cluster"]), int(time.time()))
         #rediscl.expire("t:%s" % (pack["cluster"]), 600)
-        if rediscl.llen("t:%s"% (pack["cluster"])) > 20: # max - keep 20 timestamps
+        if rediscl.llen("t:%s"% (pack["cluster"])) > 200: # max - keep 20 timestamps
             rediscl.lpop("t:%s"% (pack["cluster"]))
-        pscore = calc_period(rediscl.lrange("t:%s" % pack["cluster"], 0, -1))
-        if (score > 90):
+        if (score > 50):
+            pscore = calc_period(rediscl.lrange("t:%s" % pack["cluster"], 0, -1))
             if pack["rcode"] != 0:
                 print "%s s:%s rc: %s p: %s cluster: %s" % (pack["qname"], score, pack["rcode"], pscore, pack["cluster"])
                 rediscl.sadd("c:%s"%pack["cluster"], pack["qname"])
@@ -138,19 +143,32 @@ def indcallback(ch, method, properties, body):
         print e
 
 
-config = CFG.ConfigParser()
-config.read("dnsdexer.cfg")
-print config.get("amqp", "host")
-amqpconn = pika.BlockingConnection(pika.ConnectionParameters(config.get("amqp", "host"), int(config.get("amqp", "port")), "/"))
-amqpchann = amqpconn.channel()
-amqpexchange = config.get("amqp", "packetex")
-amqpchann.exchange_declare(exchange=amqpexchange, type='fanout')
+if __name__ == "__main__":
+    config = CFG.ConfigParser()
+    logger = logging.getLogger()
+    config.read("dnsdexer.cfg")
+    rediscl = redis.Redis(host = config.get("main","redishost"),
+                          port = int(config.get("main", "redisport")))
+    print config.get("main", "queue")
 
+    if config.get("main", "queue") == "amqp":
+        print config.get("amqp", "host")
+        amqpconn = pika.BlockingConnection(pika.ConnectionParameters(config.get("amqp", "host"),
+                                                                     int(config.get("amqp", "port")),"/"))
+        amqpchann = amqpconn.channel()
+        amqpexchange = config.get("amqp", "packetex")
+        amqpchann.exchange_declare(exchange=amqpexchange, type='fanout')
+        amqpchann.queue_declare(queue='dga')
+        amqpchann.queue_bind(exchange = amqpexchange, queue='dga')
+        amqpchann.basic_consume(indcallback, queue='dga', no_ack = True)
+        amqpchann.start_consuming()
 
-logger = logging.getLogger()
-amqpchann.queue_declare(queue='dga')
-amqpchann.queue_bind(exchange = amqpexchange, queue='dga')
-rediscl = redis.Redis(host = config.get("main","redishost"), port = int(config.get("main", "redisport")))
+    if config.get("main", "queue") == "zmq":
+        print config.get("zmq", "host")
+        context = zmq.Context()
+        zmq_socket = context.socket(zmq.PULL)
+        zmq_socket.connect(config.get("zmq", "host"))
+        while True:
+            indcallback(None, None, None, zmq_socket.recv())
 
-amqpchann.basic_consume(indcallback, queue='dga', no_ack = True)
-amqpchann.start_consuming()
+            
