@@ -11,6 +11,7 @@ import datetime
 import math
 import string
 import json
+import zmq
 
 
 
@@ -72,6 +73,7 @@ def entropy(string):
 
 def redisUpdate(dom, dat, cluster, rtype, rcode, skey, lkey):
     timestamp = int(int(time.time())) # care for day only
+    rediscl.incr("statistics:%.4i%.2i%.2i"% (datetime.datetime.now().year, datetime.datetime.now().month, datetime.datetime.now().day))
     rediscl.sadd("@%s"%dom, "%s:%s:%s" %(rtype, dat, rcode))
     if dat != '_':
         rediscl.sadd("&%s"%dat, "%s:%s" % (rtype, dom))
@@ -99,18 +101,35 @@ def indcallback(ch, method, properties, body):
 
 
 
-config = CFG.ConfigParser()
-config.read("dnsdexer.cfg")
-print config.get("amqp", "host")
-amqpconn = pika.BlockingConnection(pika.ConnectionParameters(config.get("amqp", "host"), int(config.get("amqp", "port")), "/"))
-amqpchann = amqpconn.channel()
-amqpexchange = config.get("amqp", "packetex")
-amqpchann.exchange_declare(exchange=amqpexchange, type='fanout')
-rediscl = redis.Redis(host = config.get("main","redishost"), port = int(config.get("main", "redisport")))
 
-logger = logging.getLogger()
-amqpchann.queue_declare(queue='redis')
-amqpchann.queue_bind(exchange = amqpexchange, queue='redis')
 
-amqpchann.basic_consume(indcallback, queue='redis', no_ack = True)
-amqpchann.start_consuming()
+if __name__ == "__main__":
+    config = CFG.ConfigParser()
+    logger = logging.getLogger()
+    config.read("dnsdexer.cfg")
+    rediscl = redis.Redis(host = config.get("main","redishost"),
+                          port = int(config.get("main", "redisport")))
+    print config.get("main", "queue")
+
+    if config.get("main", "queue") == "amqp":
+        print config.get("amqp", "host")
+        amqpconn = pika.BlockingConnection(pika.ConnectionParameters(config.get("amqp", "host"),
+                                                                     int(config.get("amqp", "port")),"/"))
+        amqpchann = amqpconn.channel()
+        amqpexchange = config.get("amqp", "packetex")
+        amqpchann.exchange_declare(exchange=amqpexchange, type='fanout')
+        amqpchann.queue_declare(queue='redis')
+        amqpchann.queue_bind(exchange = amqpexchange, queue='redis')
+        amqpchann.basic_consume(indcallback, queue='redis', no_ack = True)
+        amqpchann.start_consuming()
+
+    if config.get("main", "queue") == "zmq":
+        print config.get("zmq", "host")
+        context = zmq.Context()
+        zmq_socket = context.socket(zmq.PULL)
+        zmq_socket.connect(config.get("zmq", "host"))
+        while True:
+            indcallback(None, None, None, zmq_socket.recv())
+
+ 
+

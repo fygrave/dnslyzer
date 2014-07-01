@@ -33,26 +33,24 @@ class WhoisServer(SocketServer.BaseRequestHandler ):
         syslog.syslog(syslog.LOG_INFO, self.client_address[0] + ' is connected' )
         query_maker = WhoisQuery(redis_host, redis_port)
         queries = 0
-        while 1:
-            query = self.request.recv(1024).strip()
-            if query == '':
-                syslog.syslog(syslog.LOG_DEBUG, self.client_address[0] + ' is gone' )
-                break
-            ip = None
-            syslog.syslog(syslog.LOG_DEBUG, 'Query of ' + self.client_address[0] + ': ' + query)
-            queries += 1
-            try:
-                ip = IPy.IP(query)
-            except:
-                pass
-            if ip:
-                response = query_maker.whois_ip(ip)
-            else:
-               response = query_maker.whois_host(query)
-            if queries % 10 == 0:
-                syslog.syslog(syslog.LOG_INFO, self.client_address[0] + ' made ' + str(queries) + ' queries.')
-            self.request.send(response + '\n\n')
-            self.request.close()
+        query = self.request.recv(1024).strip()
+        if query == '':
+	    syslog.syslog(syslog.LOG_DEBUG, self.client_address[0] + ' is gone' )
+            self.request.send('no data\n\n')
+            return
+            
+        ip = None
+        syslog.syslog(syslog.LOG_DEBUG, 'Query of ' + self.client_address[0] + ': ' + query)
+        queries += 1
+        try:
+	    ip = IPy.IP(query)
+        except:
+	    pass
+        if ip:
+	    response = query_maker.whois_ip(ip)
+        else:
+           response = query_maker.whois_host(query)
+        self.request.send(response + '\n\n')
 
 
 

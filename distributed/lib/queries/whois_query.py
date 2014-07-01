@@ -16,6 +16,7 @@ class WhoisQuery():
         self.redis_whois_server = redis.Redis(host= host, port = port)
 
     def list_to_str(self, dom,  l):
+        print l
         if len(l) == 0:
             return None
         return reduce(lambda x, y: "%s\r\n\r\n%s"%(x,y), map(self.printable_entry, map(lambda x: (dom, x), l)))
@@ -29,18 +30,36 @@ class WhoisQuery():
         lkey = ''
         ckey = ''
         r = {}
-        if len(d) == 3: # host
+        if (d[0] == 'A' or d[0]=='NS') and len(d) == 3: # host
             rtype = d[0]
             skey = "%s;%s;%s" % (dom, d[1], d[2])
             lkey = "%s|%s|%s" % (dom, d[1],d[2])
             ckey = "%s:%s" % (dom, d[1])
             r["rrname"] = dom
-            r["rdata"] = d[2]
-        else:
+            r["rdata"] = d[1]
+        elif d[0] == 'A' and len(d) == 2:
+            rtype = d[0]
             skey = "%s;%s;%s" % (d[1],dom,"0")
             lkey = "%s|%s|%s" % (d[1],dom,"0")
             ckey = "%s:%s" % (d[1], dom)
             r["rrname"] = d[1]
+            r["rrtype"] = d[0]
+            r["rdata"] = dom
+        elif d[0] == 'MX':
+            rtype = d[0]
+	    skey = "%s;%s:%s;%s" % (dom, d[1], d[2],  "0")
+	    lkey = "%s|%s:%s|%s" % (dom, d[1], d[2],  "0")
+            ckey = "%s:%s:%s" % (dom, d[1], d[2])
+            r["rrname"] = "%s:%s" % (d[1], d[2])
+            r["rrtype"] = d[0]
+            r["rdata"] = dom
+            print "mx %s %s %s" % (skey, lkey, ckey)
+	else:
+            rtype = d[0]
+            skey = "%s;%s;%s" % (d[2],dom,"0")
+            lkey = "%s|%s|%s" % (d[2],dom,"0")
+            ckey = "%s:%s" % (d[2], dom)
+            r["rrname"] = d[2]
             r["rrtype"] = d[0]
             r["rdata"] = dom
         r["rrtype"] = rtype

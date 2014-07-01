@@ -8,6 +8,7 @@ import pika
 import base64
 import argparse
 import json
+import zmq
 
 
 global config
@@ -44,17 +45,20 @@ QRTYPE = [ 'U', #0
 
 class DNSReceiver(SocketServer.BaseRequestHandler):
     conf = config
-
-    amqpconn = pika.BlockingConnection(pika.ConnectionParameters(config.get("amqp", "host"), int(config.get("amqp", "port")), "/"))
-    amqpchann = amqpconn.channel()
-    amqpexchange = config.get("amqp", "packetex")
-    amqpchann.exchange_declare(exchange=amqpexchange, type='fanout')
-
+    amqpconn = None
+    amqpchann = None
+    amqpexchange = None
+    zmq_socket = None
     def __init__(self, request, client_address, server):
         logger = logging.getLogger()
         logger.info("Server started")
         SocketServer.BaseRequestHandler.__init__(self, request, client_address, server)
         return
+    def publish(self, exchange, key, pack):
+      if self.amqpexchange != None:
+          return self.amqpchann.basic_publish(exchange = exchange, routing_key=key, body = json.dumps(pack))
+      else:
+          return self.zmq_socket.send_json(pack)
 
     def parsepack(self, data):
       try:
@@ -63,14 +67,12 @@ class DNSReceiver(SocketServer.BaseRequestHandler):
         if r.header.rcode != 0:
             if r.q.qtype < 17 and r.q.qtype != 12: # we dont want PTR
                 pack =  {"qname": "%s"%r.q.qname, "response": "", "rtype": QRTYPE[int(r.q.qtype)], "rcode": r.header.rcode, "sender": "127.0.0.1", "time": int(time.time())}
-                self.amqpchann.basic_publish(exchange = self.amqpexchange, routing_key="%s.%s.unknown" % (pack["qname"], pack["rcode"]),
-                        body = json.dumps(pack))
+                self.publish(self.amqpexchange, "%s.%s.unknown" % (pack["qname"], pack["rcode"]), pack)
 
         for frecord in r.rr:
             if frecord.rtype < 17 and frecord.rtype != 12: # we dont want PTR
                 pack =  {"qname": "%s"% frecord.get_rname(), "rtype": QRTYPE[int(frecord.rtype)],   "rcode": r.header.rcode, "sender": "127.0.0.1", "time": int(time.time()), "response":"%s"%frecord.rdata}
-                self.amqpchann.basic_publish(exchange = self.amqpexchange, routing_key="%s.%s.%s" % (pack["qname"],  pack["rcode"], pack["response"]),
-                        body = json.dumps(pack))
+                self.publish(self.amqpexchange, "%s.%s.%s" % (pack["qname"],  pack["rcode"], pack["response"]), pack)
       except Exception, e:
           print base64.b64encode(data)
           print  e
@@ -98,4 +100,25 @@ if __name__ == "__main__":
     HOST, PORT = "0.0.0.0", int(config.get("main", "dnsport"))
     server = SocketServer.UDPServer((HOST, PORT), DNSReceiver)
     server.confg = config
+
+    print config.get("main", "queue")
+
+
+
+    if config.get("main", "queue") == "amqp":
+        print config.get("amqp", "host")
+        server.amqpconn = pika.BlockingConnection(pika.ConnectionParameters(config.get("amqp", "host"),
+                                                                     int(config.get("amqp", "port")),"/"))
+        server.amqpchann = amqpconn.channel()
+        server.amqpexchange = config.get("amqp", "packetex")
+        server.amqpchann.exchange_declare(exchange=server.amqpexchange, type='fanout')
+
+    if config.get("main", "queue") == "zmq":
+        print config.get("zmq", "host")
+        context = zmq.Context()
+        server.zmq_socket = context.socket(zmq.PUSH)
+        server.zmq_socket.bind(config.get("zmq", "bind"))
+
+
+
     server.serve_forever()
