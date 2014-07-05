@@ -17,6 +17,8 @@ import string
 import json
 from dgascore import DGAScore
 
+tldextract.PUBLIC_SUFFIX_LIST_URLS=["file:///data/effective_tld_names01.dat", "file:///data/effective_tld_names02.dat"]
+
 dgascore = DGAScore()
 
 def get_date():
@@ -24,13 +26,39 @@ def get_date():
     return "%s-%s-%s" % (d.day, d.month, d.year)
 
 def cluster_id(domain_label):
-    domain = "%s" % (domain_label)
+    dom = tldextract.extract(domain_label)
+    line = "%s.%s." % (dom.domain, dom.suffix)
+    domain =  dom.domain.encode('utf-8')
     zone = "nozone"
+    if len(dom.suffix) > 1:
+       zone = dom.suffix.encode('utf-8')
     try:
         zone = domain[domain.rindex('.')+1:]
     except Exception, e:
         pass
-    c =  "%s_%s_%s" % (zone, len(domain), entropy(domain))
+    c =  "%s_%.2i_%s_%.2i_%s_%s" % (zone, len(domain), charset(domain), len(dom.subdomain), charset(dom.subdomain.encode('utf-8')), entropy(domain))
+    return c
+
+def features(dom_label):
+    dom = tldextract.extract(dom_label)
+    domain =  dom.domain.encode('utf-8')
+    return [len(domain), len(dom.subdomain), len(dom.suffix), entropy(domain)] + stats(domain)  + stats(dom.subdomain.encode('utf-8'))
+
+def stats(s):
+    return [ len(s.translate(None, "%s%s" % (string.lowercase, string.punctuation))),
+             len(s.translate(None, "%s%s" %(string.lowercase, string.digits))),
+             len(s.translate(None, string.digits + string.punctuation))]
+
+
+def charset(s):
+# test 1 - would domain contain punctuation
+# test 2 - would domain contain numbers
+# test 3 - is domain letter only
+    c = ""
+    s = s.lower()
+    c = "N%.2i"%(len(s.translate(None, "%s%s" % (string.lowercase, string.punctuation))))
+    c = "%sP%.2i"% (c, len(s.translate(None, "%s%s" %(string.lowercase, string.digits))))
+    c = "%sA%.2i"%(c, len(s.translate(None, string.digits + string.punctuation)))
     return c
 
 def should_ignore(name):
@@ -40,28 +68,6 @@ def should_ignore(name):
             return True
 
     return False
-
-def charset(s):
-# test 1 - would domain contain punctuation
-# test 2 - would domain contain numbers
-# test 3 - is domain letter only
-    s = s.translate(".")
-    c = ""
-    s = s.lower()
-    if len(s.translate("%s%s" %(string.lowercase, string.digits))) != 0:
-        c = "N"
-    else:
-        c = "X"
-    if len(s.translate("%s%s" % (string.lowercase, string.punctuation))) != 0:
-        c = "%sP"%c
-    else:
-        c ="%sX"%c
-    if len(s.translate(string.lowercase)) == 0:
-        c = "%sA"%c
-    else:
-        c ="%sX"%c
-
-    return c
 
 def dscore(line):
     if len(line) < 5:
@@ -101,7 +107,7 @@ def redisUpdate(dom, dat, cluster, rtype, rcode, skey, lkey):
 def calc_entropy(x):
     #count, bins = np.histogram(x)
     count = x
-    p = count/float(np.sum(count))
+    p = np.ma.fix_invalid(count/float(np.sum(count)))
     return (-np.sum(np.compress(p != 0, p*(np.log(p)))))
     #return np.log2(np.max(x))*np.sum(x * np.log2(x+0.000001))
     #return np.sum(-x * np.log2(x + 0.1))
@@ -117,30 +123,50 @@ def calc_period(arr):
     p =  1-(10 *calc_entropy(df)/np.log(np.exp(len(df))))
     return p
 
+
+def verotkl(s):
+    if len(s) < 3:
+        return 0.0
+    a = np.ma.fix_invalid(np.array(s, dtype='i4'))
+    median = np.median(a)
+    diff = median - a
+    abs =np.sum( a * a)
+    return np.ma.fix_invalid([np.sqrt(2*abs/len(a) - 1/median)]).data[0]
+
 def indcallback(ch, method, properties, body):
 
     global rediscl
     try:
         pack = json.loads(body)
+                
         if pack["rtype"] != "A":
             return
         if should_ignore(pack["qname"]):
             return
         pack["cluster"] = cluster_id(pack["qname"])
-        score = dscore(pack["qname"])
         rediscl.rpush("t:%s"% (pack["cluster"]), int(time.time()))
         #rediscl.expire("t:%s" % (pack["cluster"]), 600)
         if rediscl.llen("t:%s"% (pack["cluster"])) > 200: # max - keep 20 timestamps
             rediscl.lpop("t:%s"% (pack["cluster"]))
-        if (score > 50):
-            pscore = calc_period(rediscl.lrange("t:%s" % pack["cluster"], 0, -1))
+        periods = rediscl.lrange("t:%s" % pack["cluster"], 0, -1)
+        rediscl.sadd("s:%s" %pack["sender"], pack["cluster"])
+        pack["score"] = [dscore(pack["qname"]),
+		         calc_period(periods),
+                         verotkl(periods),
+                         int(pack["dns-qdcount"]), int(pack["dns-ancount"]), 
+                         int(pack["dns-nscount"]), int(pack["dns-arcount"]), int(pack["dns-ttl"])] + features(pack["qname"])
+        
+        if (pack["score"][0] > -1):
             if pack["rcode"] != 0:
-                print "%s s:%s rc: %s p: %s cluster: %s" % (pack["qname"], score, pack["rcode"], pscore, pack["cluster"])
+                print "%s s:%s rc: %s  cluster: %s" % (pack["qname"], json.dumps(pack["score"]), pack["rcode"],  pack["cluster"])
                 rediscl.sadd("c:%s"%pack["cluster"], pack["qname"])
             else:
-                print "%s s:%s rc: %s r: %s p: %s cluster: %s" % (pack["qname"], score, pack["rcode"], pack["response"], pscore, pack["cluster"])
+                print "%s s:%s rc: %s r: %s  cluster: %s" % (pack["qname"], json.dumps(pack["score"]), pack["rcode"], pack["response"],  pack["cluster"])
                 rediscl.sadd("i:%s"% pack["response"], pack["qname"])
-    except Exception, e:
+        #set with expiration
+        rediscl.setex("h:%s" % pack["qname"], json.dumps(pack), 60)
+            
+    except KeyError, e:
         print e
 
 
