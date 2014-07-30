@@ -50,6 +50,11 @@ class DNSReceiver(SocketServer.BaseRequestHandler):
     amqpexchange = None
     zmq_socket = None
     def __init__(self, request, client_address, server):
+        self.conf = server.conf
+        self.amqpconn = server.amqpconn
+        self.amqpchann = server.amqpchann
+        self.amqpexchange = server.amqpexchange
+        self.zmq_socket = server.zmq_socket
         logger = logging.getLogger()
         logger.info("Server started")
         SocketServer.BaseRequestHandler.__init__(self, request, client_address, server)
@@ -66,12 +71,14 @@ class DNSReceiver(SocketServer.BaseRequestHandler):
         r = dnslib.DNSRecord.parse(dnspack)
         if r.header.rcode != 0:
             if r.q.qtype < 17 and r.q.qtype != 12: # we dont want PTR
-                pack =  {"qname": "%s"%r.q.qname, "response": "", "rtype": QRTYPE[int(r.q.qtype)], "rcode": r.header.rcode, "sender": "127.0.0.1", "time": int(time.time())}
+                print r.q.qname
+                pack =  {"qname": "%s"%r.q.qname, "response": "", "rtype": QRTYPE[int(r.q.qtype)], "rcode": r.header.rcode, "sender": "127.0.0.1", "time": int(time.time()), "dns-qdcount": r.header.q, "dns-ancount": r.header.a, "dns-arcount": r.header.ar, "dns-nscount": r.header.ns, "dns-ttl": -1}
                 self.publish(self.amqpexchange, "%s.%s.unknown" % (pack["qname"], pack["rcode"]), pack)
+        #else
 
         for frecord in r.rr:
             if frecord.rtype < 17 and frecord.rtype != 12: # we dont want PTR
-                pack =  {"qname": "%s"% frecord.get_rname(), "rtype": QRTYPE[int(frecord.rtype)],   "rcode": r.header.rcode, "sender": "127.0.0.1", "time": int(time.time()), "response":"%s"%frecord.rdata}
+                pack =  {"qname": "%s"% frecord.get_rname(), "rtype": QRTYPE[int(frecord.rtype)],   "rcode": r.header.rcode, "sender": "127.0.0.1", "time": int(time.time()), "response":"%s"%frecord.rdata,  "dns-qdcount": r.header.q, "dns-ancount": r.header.a, "dns-arcount": r.header.ar, "dns-nscount": r.header.ns, "dns-ttl": frecord.ttl}
                 self.publish(self.amqpexchange, "%s.%s.%s" % (pack["qname"],  pack["rcode"], pack["response"]), pack)
       except Exception, e:
           print base64.b64encode(data)
@@ -99,7 +106,11 @@ if __name__ == "__main__":
     config.readfp(r.config)
     HOST, PORT = "0.0.0.0", int(config.get("main", "dnsport"))
     server = SocketServer.UDPServer((HOST, PORT), DNSReceiver)
-    server.confg = config
+    server.conf = config
+    server.zmq_socket = None
+    server.amqpexchange = None
+    server.amqpchann = None
+    server.amqpconn = None
 
     print config.get("main", "queue")
 
@@ -109,7 +120,7 @@ if __name__ == "__main__":
         print config.get("amqp", "host")
         server.amqpconn = pika.BlockingConnection(pika.ConnectionParameters(config.get("amqp", "host"),
                                                                      int(config.get("amqp", "port")),"/"))
-        server.amqpchann = amqpconn.channel()
+        server.amqpchann = server.amqpconn.channel()
         server.amqpexchange = config.get("amqp", "packetex")
         server.amqpchann.exchange_declare(exchange=server.amqpexchange, type='fanout')
 
