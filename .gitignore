@@ -2,12 +2,11 @@ lib-cov
 *.seed
 *.log
 *.csv
-*.dat
 *.out
 *.pid
 *.gz
 *.pyc
-
+*.pickle
 pids
 logs
 results
